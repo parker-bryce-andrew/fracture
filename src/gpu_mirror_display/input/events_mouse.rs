@@ -30,104 +30,100 @@ pub(crate) fn on_mouse_events(app: &mut Application, event: &WindowEvent) {
             device_id: _,
             state: state2,
             button: btn,
-        } => {
-            match state2 {
-                winit::event::ElementState::Pressed => {
-                    match btn {
-                        winit::event::MouseButton::Left => {
-                            app.app_state.intricate_todo_refactor.keep_borders = true;
+        } => match state2 {
+            winit::event::ElementState::Pressed => match btn {
+                winit::event::MouseButton::Left => {
+                    app.app_state.intricate_todo_refactor.keep_borders = true;
 
-                            match app.user_interaction.mouse_resize_state {
-                                ResizeInteractionsState::None => {
-                                    app.app_state.intricate_todo_refactor.keep_borders = false;
-                                    app.user_interaction.mouse_downs.push((
-                                        (app.app_state.last_iteration.last_known_mouse_position),
-                                        SystemTime::now(),
-                                    ));
+                    match app.user_interaction.mouse_resize_state {
+                        ResizeInteractionsState::None => {
+                            app.app_state.intricate_todo_refactor.keep_borders = false;
+                            app.user_interaction.mouse_downs.push((
+                                (app.app_state.last_iteration.last_known_mouse_position),
+                                SystemTime::now(),
+                            ));
 
-                                    if app.app_state.intricate_todo_refactor.crop_button_pressed {
-                                        app.app_state.intricate_todo_refactor.in_crop_selection =
-                                            true;
-                                    }
-
-                                    app.user_interaction.mouse_is_down = true;
-                                    app.user_interaction.mouse_select_start =
-                                        app.app_state.last_iteration.last_known_mouse_position;
-                                }
-                                ResizeInteractionsState::NwResize => {
-                                    let _ = app.systems.window.window.drag_resize_window(
-                                        winit::window::ResizeDirection::NorthWest,
-                                    );
-                                }
-                                ResizeInteractionsState::SwResize => {
-                                    let _ = app.systems.window.window.drag_resize_window(
-                                        winit::window::ResizeDirection::SouthWest,
-                                    );
-                                }
-                                ResizeInteractionsState::NeResize => {
-                                    let _ = app.systems.window.window.drag_resize_window(
-                                        winit::window::ResizeDirection::NorthEast,
-                                    );
-                                }
-                                ResizeInteractionsState::SeResize => {
-                                    let _ = app.systems.window.window.drag_resize_window(
-                                        winit::window::ResizeDirection::SouthEast,
-                                    );
-                                }
-                                ResizeInteractionsState::North => {
-                                    let _ =
-                                        app.systems.window.window.drag_resize_window(
-                                            winit::window::ResizeDirection::North,
-                                        );
-                                }
-                                ResizeInteractionsState::South => {
-                                    let _ =
-                                        app.systems.window.window.drag_resize_window(
-                                            winit::window::ResizeDirection::South,
-                                        );
-                                }
-                                ResizeInteractionsState::East => {
-                                    let _ =
-                                        app.systems.window.window.drag_resize_window(
-                                            winit::window::ResizeDirection::East,
-                                        );
-                                }
-                                ResizeInteractionsState::West => {
-                                    let _ =
-                                        app.systems.window.window.drag_resize_window(
-                                            winit::window::ResizeDirection::West,
-                                        );
-                                }
+                            if app.app_state.intricate_todo_refactor.crop_button_pressed {
+                                app.app_state.intricate_todo_refactor.in_crop_selection = true;
                             }
-                        }
-                        winit::event::MouseButton::Right => {
-                            app.systems
-                                .window
-                                .window
-                                .show_window_menu(PhysicalPosition {
-                                    x: app.app_state.last_iteration.last_known_mouse_position.0,
-                                    y: app.app_state.last_iteration.last_known_mouse_position.1,
-                                });
-                        }
 
-                        _ => {}
+                            app.user_interaction.mouse_is_down = true;
+                            app.user_interaction.mouse_select_start =
+                                app.app_state.last_iteration.last_known_mouse_position;
+                        }
+                        ResizeInteractionsState::NwResize => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::NorthWest);
+                        }
+                        ResizeInteractionsState::SwResize => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::SouthWest);
+                        }
+                        ResizeInteractionsState::NeResize => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::NorthEast);
+                        }
+                        ResizeInteractionsState::SeResize => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::SouthEast);
+                        }
+                        ResizeInteractionsState::North => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::North);
+                        }
+                        ResizeInteractionsState::South => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::South);
+                        }
+                        ResizeInteractionsState::East => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::East);
+                        }
+                        ResizeInteractionsState::West => {
+                            let _ = app
+                                .systems
+                                .window
+                                .drag_resize_window(winit::window::ResizeDirection::West);
+                        }
                     }
                 }
-                winit::event::ElementState::Released => match btn {
-                    winit::event::MouseButton::Left => {
-                        app.user_interaction.mouse_clicks.push((
-                            (app.app_state.last_iteration.last_known_mouse_position),
-                            SystemTime::now(),
-                        ));
+                winit::event::MouseButton::Right => {
+                    app.systems.window.show_window_menu(PhysicalPosition {
+                        x: app.app_state.last_iteration.last_known_mouse_position.0,
+                        y: app.app_state.last_iteration.last_known_mouse_position.1,
+                    });
+                }
 
-                        app.user_interaction.mouse_is_down = false;
+                _ => {}
+            },
+            winit::event::ElementState::Released => match btn {
+                winit::event::MouseButton::Left => {
+                    app.user_interaction.mouse_clicks.push((
+                        (app.app_state.last_iteration.last_known_mouse_position),
+                        SystemTime::now(),
+                    ));
 
-                        if_in_crop_complete_crop(app, CropEndTriggeredFrom::MouseUp);
-                    }
-                    _ => {}
-                },
-            }
-        }
+                    app.user_interaction.mouse_is_down = false;
+
+                    if_in_crop_complete_crop(app, CropEndTriggeredFrom::MouseUp);
+                }
+                _ => {}
+            },
+        },
 
         WindowEvent::CursorMoved {
             device_id: _,
@@ -155,7 +151,7 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
     app.app_state.last_iteration.last_known_mouse_position =
         (position.x.round() as u32, position.y.round() as u32);
 
-    let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+    let PhysicalSize { width, height } = app.systems.window.inner_size();
 
     let (x, y) = *&app.app_state.last_iteration.last_known_mouse_position;
 
@@ -165,24 +161,20 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
         if x < resize && y < resize {
             app.systems
                 .window
-                .window
                 .set_cursor(winit::window::CursorIcon::NwResize);
             app.user_interaction.mouse_resize_state = ResizeInteractionsState::NwResize;
         } else if x < resize && y > height - resize {
             app.systems
-                .window
                 .window
                 .set_cursor(winit::window::CursorIcon::SwResize);
             app.user_interaction.mouse_resize_state = ResizeInteractionsState::SwResize;
         } else if y < resize && x > width - resize {
             app.systems
                 .window
-                .window
                 .set_cursor(winit::window::CursorIcon::NeResize);
             app.user_interaction.mouse_resize_state = ResizeInteractionsState::NeResize;
         } else if y > height - resize && x > width - resize {
             app.systems
-                .window
                 .window
                 .set_cursor(winit::window::CursorIcon::SeResize);
             app.user_interaction.mouse_resize_state = ResizeInteractionsState::SeResize;
@@ -192,14 +184,12 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
             {
                 app.systems
                     .window
-                    .window
                     .set_cursor(winit::window::CursorIcon::Default);
                 app.user_interaction.mouse_resize_state = ResizeInteractionsState::None;
             } else {
                 if x < resize || x > width - resize || y < resize || y > height - resize {
                     if x < resize || x > width - resize {
                         app.systems
-                            .window
                             .window
                             .set_cursor(winit::window::CursorIcon::ColResize);
 
@@ -210,7 +200,6 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
                         }
                     } else {
                         app.systems
-                            .window
                             .window
                             .set_cursor(winit::window::CursorIcon::RowResize);
 
@@ -225,7 +214,6 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
                 } else {
                     app.systems
                         .window
-                        .window
                         .set_cursor(winit::window::CursorIcon::Default);
                     app.user_interaction.mouse_resize_state = ResizeInteractionsState::None;
                 }
@@ -233,7 +221,6 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
         }
     } else {
         app.systems
-            .window
             .window
             .set_cursor(winit::window::CursorIcon::Default);
         app.user_interaction.mouse_resize_state = ResizeInteractionsState::None;

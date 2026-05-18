@@ -25,7 +25,7 @@ pub enum PipewireShutdownErr {
     TimeoutOrTermination(std::sync::mpsc::RecvTimeoutError),
 }
 
-pub fn shutdown(ev: &ActiveEventLoop, app: &Application) -> Result<ShutdownResult, ShutdownResult> {
+pub fn shutdown(ev: &ActiveEventLoop, app: Application) -> Result<ShutdownResult, ShutdownResult> {
     println!("Shutting down.");
 
     let pw_1 = app.external.channels.terminate_pipewire_stream.send(());
@@ -130,6 +130,12 @@ pub fn shutdown(ev: &ActiveEventLoop, app: &Application) -> Result<ShutdownResul
         }
     }
 
+    println!("Attempting to drop application data");
+
+    // I think the window handle needs to be dropped before calling exit.
+    std::mem::drop(app);
+
+    println!("Attempting to exit event loop.");
     // if either thread fails to shutdown i've not been successful calling `exit`. maybe
     // it's UB, maybe it's the foreign code, i don't know yet.
     ev.exit();

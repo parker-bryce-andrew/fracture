@@ -34,7 +34,7 @@ pub fn calculate_frame_transformations_for_settings(
                             &center_verticies(
                                 VERTICES.to_vec(),
                                 (crop.size.width, crop.size.height),
-                                app.systems.window.window.inner_size().into(),
+                                app.systems.window.inner_size().into(),
                             ),
                             &pos,
                         ),
@@ -51,7 +51,7 @@ pub fn calculate_frame_transformations_for_settings(
 
     // If texture matches the window size, it should never be transformed so that
     // it maintains it's pixel perfect output.
-    let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+    let PhysicalSize { width, height } = app.systems.window.inner_size();
 
     if crop.size.width as u32 == width && crop.size.height <= height
         || crop.size.height as u32 == height && crop.size.width as u32 <= width

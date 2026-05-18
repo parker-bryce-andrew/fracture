@@ -29,7 +29,7 @@ use wgpu::{BindGroupLayout, Extent3d, TextureUsages, TextureView, TextureViewDes
 use winit::dpi::PhysicalSize;
 
 pub fn on_redraw(mut app: &mut Application) {
-    app.systems.window.window.request_redraw();
+    app.systems.window.request_redraw();
 
     let data: Option<Arc<_>> = {
         if let Some(data) = &*FRAME_TRANSFER.lock().unwrap() {
@@ -86,7 +86,7 @@ pub fn on_redraw(mut app: &mut Application) {
 
         let active_ui_flags = app.get_active_ui_flags();
 
-        let size = app.systems.window.window.inner_size();
+        let size = app.systems.window.inner_size();
 
         let overlay_text_view = write_ui_texture_and_handle_ui_actions(&mut app, size);
 
@@ -130,7 +130,7 @@ pub fn on_redraw(mut app: &mut Application) {
                 let PhysicalSize {
                     width: phys_w,
                     height: phys_h,
-                } = app.systems.window.window.inner_size();
+                } = app.systems.window.inner_size();
 
                 let mut loc = VideoLocation::NorthWest;
 
@@ -171,7 +171,7 @@ pub fn on_redraw(mut app: &mut Application) {
                 {
                     write_ui_data_to_buffer(
                         &app.systems.wgpu.queue,
-                        (&app.systems).window.window.inner_size(),
+                        (&app.systems).window.inner_size(),
                         app.app_state.last_iteration.last_known_mouse_position,
                         app.user_interaction.mouse_select_start,
                         &ui_flags,
@@ -202,7 +202,7 @@ pub fn on_redraw(mut app: &mut Application) {
             TextureTransformed::TextureTransformedByVerts => {
                 write_ui_data_to_buffer(
                     &app.systems.wgpu.queue,
-                    (&app.systems.window).window.inner_size(),
+                    (&app.systems.window).inner_size(),
                     app.app_state.last_iteration.last_known_mouse_position,
                     app.user_interaction.mouse_select_start,
                     &ui_flags,
@@ -278,7 +278,7 @@ pub fn on_redraw(mut app: &mut Application) {
     match app.render(imported_dma) {
         Ok(_) => {}
         Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-            app.resize(app.systems.window.window.inner_size())
+            app.resize(app.systems.window.inner_size())
         }
         Err(v) => {
             println!("{v:?}");
@@ -1008,6 +1008,6 @@ fn if_frame_size_changed(app: &mut Application, frame: &Arc<LastReported>) {
 
     if *last_frame_size != frame.window_dimensions {
         *last_frame_size = frame.window_dimensions;
-        app.resize(app.systems.window.window.inner_size());
+        app.resize(app.systems.window.inner_size());
     }
 }

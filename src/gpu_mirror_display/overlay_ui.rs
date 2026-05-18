@@ -208,10 +208,10 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_SQUARE_NO_FILL,
                     ) {
-                        if !app.systems.window.window.is_maximized() {
-                            app.systems.window.window.set_maximized(true);
+                        if !app.systems.window.is_maximized() {
+                            app.systems.window.set_maximized(true);
                         } else {
-                            app.systems.window.window.set_maximized(false);
+                            app.systems.window.set_maximized(false);
                         }
                     }
                 }
@@ -246,7 +246,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_MINIMIZE_NO_FILL,
                     ) {
-                        app.systems.window.window.set_minimized(true);
+                        app.systems.window.set_minimized(true);
                     }
                 }
             }
@@ -257,7 +257,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &mut app.user_interaction.mouse_downs,
                         &((0, 0), ((width as i32), (height as i32))),
                     ) {
-                        let _ = app.systems.window.window.drag_window();
+                        let _ = app.systems.window.drag_window();
                         app.user_interaction.mouse_downs.remove(idx);
                     }
                 }

@@ -50,14 +50,10 @@ fn if_needed_resize_window_to_scaled_frame_size(
         let new_height = (height as f32 * as_percent_y).round() as u32;
 
         if (new_width, new_height) != (width, height) {
-            let _ = app
-                .systems
-                .window
-                .window
-                .request_inner_size(PhysicalSize::new(
-                    (new_width as i32).max(1),
-                    (new_height as i32).max(1),
-                ));
+            let _ = app.systems.window.request_inner_size(PhysicalSize::new(
+                (new_width as i32).max(1),
+                (new_height as i32).max(1),
+            ));
         }
     }
 }
@@ -71,7 +67,6 @@ pub fn if_needed_resize_window_to_frame_size(
         let _ = app
             .systems
             .window
-            .window
             .request_inner_size(PhysicalSize::new(*frame_width as i32, *frame_height as i32));
     }
 }
@@ -79,34 +74,32 @@ pub fn if_needed_resize_window_to_frame_size(
 pub fn if_surface_size_changed(app: &mut Application) {
     let last_surface_size = &mut app.app_state.last_iteration.last_surface_size;
 
-    if *last_surface_size != app.systems.window.window.inner_size() {
+    if *last_surface_size != app.systems.window.inner_size() {
         let (max_width, max_height) = (
             app.systems.wgpu.device.limits().max_texture_dimension_2d,
             app.systems.wgpu.device.limits().max_texture_dimension_2d,
         );
 
-        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.inner_size();
 
         if width > max_width {
             let _ = app
                 .systems
                 .window
-                .window
                 .request_inner_size(PhysicalSize::new(max_width as i32, height as i32));
         }
 
-        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.inner_size();
 
         if height > max_height {
             let _ = app
                 .systems
                 .window
-                .window
                 .request_inner_size(PhysicalSize::new(width as i32, max_height as i32));
         }
 
-        *last_surface_size = app.systems.window.window.inner_size();
-        app.resize(app.systems.window.window.inner_size());
+        *last_surface_size = app.systems.window.inner_size();
+        app.resize(app.systems.window.inner_size());
     }
 }
 
@@ -117,7 +110,7 @@ pub fn if_settings_maintain_aspect_ratio(app: &Application, cropped: &CroppedAre
         WindowBehaviour::SizeMatchesMirrorAspect,
     ) = &app.configuration.aspect_ratio
     {
-        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.inner_size();
         let Size {
             width: frame_width,
             height: frame_height,

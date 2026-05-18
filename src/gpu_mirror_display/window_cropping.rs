@@ -11,8 +11,8 @@ use std::sync::Arc;
 use winit::dpi::PhysicalSize;
 
 pub fn start_crop_selection(app: &mut Application) {
-    app.systems.window.window.set_maximized(false);
-    app.systems.window.window.set_minimized(false);
+    app.systems.window.set_maximized(false);
+    app.systems.window.set_minimized(false);
 
     app.app_state.intricate_todo_refactor.crop_button_pressed = true;
     app.app_state.intricate_todo_refactor.new_settings = true;
@@ -55,7 +55,6 @@ pub fn start_crop_selection(app: &mut Application) {
 
     app.systems
         .window
-        .window
         .request_inner_size(PhysicalSize {
             width: app.app_state.cropped.as_ref().unwrap().size.width + SELECTION_WINDOW_OFFSETS.0,
             height: app.app_state.cropped.as_ref().unwrap().size.height
@@ -72,11 +71,11 @@ pub fn if_crop_button_is_active(
     let cropped_button_press: bool = *crop_button_press;
 
     if cropped_button_press {
-        if app.systems.window.window.is_maximized() {
-            app.systems.window.window.set_maximized(false);
+        if app.systems.window.is_maximized() {
+            app.systems.window.set_maximized(false);
         }
 
-        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.inner_size();
         let (f_w, f_h) = frame.window_dimensions;
         let (off_w, off_h) = SELECTION_WINDOW_OFFSETS;
 
@@ -94,7 +93,6 @@ pub fn if_crop_button_is_active(
             });
 
             app.systems
-                .window
                 .window
                 .request_inner_size(PhysicalSize {
                     width: f_w + off_w,
@@ -139,7 +137,7 @@ pub struct CroppedArea {
 }
 
 pub fn if_in_crop_complete_crop(app: &mut Application, from: CropEndTriggeredFrom) {
-    let PhysicalSize { width, height } = app.systems.window.window.inner_size();
+    let PhysicalSize { width, height } = app.systems.window.inner_size();
 
     if app.app_state.intricate_todo_refactor.in_crop_selection
         || app.app_state.intricate_todo_refactor.crop_button_pressed
@@ -238,7 +236,6 @@ pub fn if_in_crop_complete_crop(app: &mut Application, from: CropEndTriggeredFro
             app.app_state.intricate_todo_refactor.new_settings = true;
 
             app.systems
-                .window
                 .window
                 .request_inner_size(PhysicalSize {
                     width: app.app_state.cropped.as_ref().unwrap().size.width,
