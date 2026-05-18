@@ -1,7 +1,1 @@
 /target
-/flatpak/repo/*
-/flatpak/builddir/*
-/flatpak/.flatpak-builder/*
-/flatpak/fracture
-/flatpak/launcher
-/flatpak/systems.fracture.launcher.flatpak

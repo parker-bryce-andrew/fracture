@@ -1,7 +1,0 @@
-[package]
-name = "gsc-launcher"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-notify-rust = "4.12.0"
