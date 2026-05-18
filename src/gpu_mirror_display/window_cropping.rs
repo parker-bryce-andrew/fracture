@@ -39,7 +39,7 @@ pub fn start_crop_selection(app: &mut Application) {
         .send(app.configuration.clone())
         .unwrap();
 
-    let _ = app.gtk_shutdown_signal_checked();
+    let _ = app.external.settings_ui.gtk_shutdown_signal_checked(&app);
 
     app.app_state.cropped = Some(CroppedArea {
         relative_to_window_position: InitialAbsoluteWindowPosition { x: 0, y: 0 },

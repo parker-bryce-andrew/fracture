@@ -40,8 +40,9 @@ pub fn shutdown(ev: &ActiveEventLoop, app: Application) -> Result<ShutdownResult
             count += 1;
 
             // The termination check is completed when starting
-            let r1 = app.gtk_open_signal();
-            let r2 = app.gtk_shutdown_signal();
+
+            let r1 = app.external.settings_ui.gtk_open_signal(&app);
+            let r2 = app.external.settings_ui.gtk_shutdown_signal(&app);
 
             // There's a case where the termination signal kills the thread before the channels are used. There
             // was an expect in the open and closing, so now I'm checking the errors reported to make sure

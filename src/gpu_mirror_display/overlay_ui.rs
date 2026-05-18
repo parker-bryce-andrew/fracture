@@ -49,7 +49,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
     let mut found_hover = false;
 
     // The user interface is only displayed when the mouse is over the screen.
-    if app.should_render_ui() {
+    if app.mirror.render.should_render_ui(&app) {
         if *&app.app_state.intricate_todo_refactor.crop_button_pressed {
             /*           let x: i32 = (width as i32 / 2)
                 - (binary_images::ICON_SELECT_SCREEN_AREA.dimensions.width / 2) as i32;
@@ -97,7 +97,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     &img_position,
                     &binary_images::ICON_GEAR_NO_FILL,
                 ) {
-                    let _ = app.gtk_open_signal();
+                    let _ = app.external.settings_ui.gtk_open_signal(app);
                 }
             }
 

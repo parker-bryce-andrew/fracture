@@ -26,6 +26,7 @@ pub struct DmaStartupChecks {
     pub fail_at: u32,
 }
 
+/// **Not used yet**
 pub struct SettingsGtk;
 
 pub struct UserInteractionState {
@@ -89,12 +90,14 @@ pub struct AppSystems {
     pub async_rt: Option<tokio::runtime::Runtime>,
 }
 
+/// **Not used yet**
 pub struct PipewireController;
 
 pub struct ExternalControl {
-    pub settings_ui: SettingsGtk,
-    pub pipewire: PipewireController,
     pub channels: Arc<GpuChannelSide>,
+    pub settings_ui: SettingsGtk,
+    /// **Not used yet**
+    pub pipewire: PipewireController,
 }
 
 pub struct InitState {
@@ -123,10 +126,11 @@ pub struct IntricateState {
 }
 pub struct AppState {
     pub cropped: Option<CroppedArea>,
-    pub current_activity: EnumeratedState,
     pub initialization_checks: InitState,
     pub last_iteration: PreviousIteration,
     pub intricate_todo_refactor: IntricateState,
+    /// **Not used yet**
+    pub current_activity: EnumeratedState,
 }
 
 pub struct Application {
@@ -138,31 +142,90 @@ pub struct Application {
     pub external: ExternalControl,
 }
 
+/// **Not used yet**
 pub struct SelectStart {
     pub x: u32,
     pub y: u32,
 }
 
+/// **Not used yet**
 pub enum EnumeratedState {
     WaitingForSelection,
     InSelection(SelectStart),
     UsingSelection(CroppedArea),
 }
 
-impl Application {
-    pub fn window(&self) -> &Window {
-        &self.systems.window
+impl SettingsGtk {
+    /// Even when reporting Ok(()), it can seem like it failed if it immediately opens again.
+    pub fn gtk_shutdown_signal(&self, app: &Application) -> Result<(), ShutdownSettingsErr> {
+        let before = app.configuration.clone();
+
+        let res = app.external.channels.gpu_sender_request.send(before);
+
+        if let Err(e) = res {
+            return Err(ShutdownSettingsErr::SendStateErr(e));
+        }
+
+        let res = app.external.channels.kill_gtk.send(());
+
+        if let Err(e) = res {
+            return Err(ShutdownSettingsErr::SendKillErr(e));
+        }
+
+        Ok(())
     }
 
-    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
-        if new_size.width > 0 && new_size.height > 0 {
-            self.systems.wgpu.config.width = new_size.width;
-            self.systems.wgpu.config.height = new_size.height;
+    pub fn gtk_shutdown_signal_checked(
+        &self,
+        app: &Application,
+    ) -> Result<(), ShutdownSettingsErr> {
+        let is_active = { *SETTINGS_IS_RUNNING.lock().unwrap() };
 
-            self.systems
-                .wgpu
-                .surface
-                .configure(&self.systems.wgpu.device, &self.systems.wgpu.config);
+        if is_active {
+            self.gtk_shutdown_signal(app)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Even when reporting Ok(()), it can seem like it failed if it immediately closes again
+    pub fn gtk_open_signal(&self, app: &Application) -> Result<(), OpenSettingsErr> {
+        let before = app.configuration.clone();
+
+        if let Err(e) = app.external.channels.gpu_sender_request.send(before) {
+            return Err(OpenSettingsErr::FailedToUpdateState(e));
+        }
+
+        // This is just suggestive. It doesn't hold the lock. It can shutdown before
+        // the shutdown call is made or start before the start is called.
+        let is_active = { *SETTINGS_IS_RUNNING.lock().unwrap() };
+
+        if is_active {
+            match self.gtk_shutdown_signal(app) {
+                Err(e) => {
+                    return Err(OpenSettingsErr::ThreadPredictedTerminated(e));
+                }
+                _ => {}
+            }
+        }
+
+        let res = app.external.channels.start_settings_ui.send(());
+
+        if let Err(e) = res {
+            return Err(OpenSettingsErr::FailedToSendStartSignal(e));
+        }
+
+        Ok(())
+    }
+}
+
+impl MirrorRenderer {
+    pub fn resize(&self, wgpu: &mut WgpuContainer, new_size: winit::dpi::PhysicalSize<u32>) {
+        if new_size.width > 0 && new_size.height > 0 {
+            wgpu.config.width = new_size.width;
+            wgpu.config.height = new_size.height;
+
+            wgpu.surface.configure(&wgpu.device, &wgpu.config);
 
             // This is a hack.
             //
@@ -184,16 +247,18 @@ impl Application {
         }
     }
 
-    pub fn should_render_ui(&self) -> bool {
-        if self.user_interaction.mouse_over_screen
-            || self.user_interaction.mouse_resize_state != ResizeInteractionsState::None
+    pub fn should_render_ui(&self, app: &Application) -> bool {
+        if app.user_interaction.mouse_over_screen
+            || app.user_interaction.mouse_resize_state != ResizeInteractionsState::None
         {
             true
         } else {
             false
         }
     }
+}
 
+impl Application {
     pub fn get_active_ui_flags(&self) -> Vec<UiFlag> {
         let mut active_ui_flags = vec![];
 
@@ -234,65 +299,6 @@ impl Application {
         }
 
         active_ui_flags
-    }
-
-    /// Even when reporting Ok(()), it can seem like it failed if it immediately opens again.
-    pub fn gtk_shutdown_signal(&self) -> Result<(), ShutdownSettingsErr> {
-        let before = self.configuration.clone();
-
-        let res = self.external.channels.gpu_sender_request.send(before);
-
-        if let Err(e) = res {
-            return Err(ShutdownSettingsErr::SendStateErr(e));
-        }
-
-        let res = self.external.channels.kill_gtk.send(());
-
-        if let Err(e) = res {
-            return Err(ShutdownSettingsErr::SendKillErr(e));
-        }
-
-        Ok(())
-    }
-
-    pub fn gtk_shutdown_signal_checked(&self) -> Result<(), ShutdownSettingsErr> {
-        let is_active = { *SETTINGS_IS_RUNNING.lock().unwrap() };
-
-        if is_active {
-            self.gtk_shutdown_signal()
-        } else {
-            Ok(())
-        }
-    }
-
-    /// Even when reporting Ok(()), it can seem like it failed if it immediately closes again
-    pub fn gtk_open_signal(&self) -> Result<(), OpenSettingsErr> {
-        let before = self.configuration.clone();
-
-        if let Err(e) = self.external.channels.gpu_sender_request.send(before) {
-            return Err(OpenSettingsErr::FailedToUpdateState(e));
-        }
-
-        // This is just suggestive. It doesn't hold the lock. It can shutdown before
-        // the shutdown call is made or start before the start is called.
-        let is_active = { *SETTINGS_IS_RUNNING.lock().unwrap() };
-
-        if is_active {
-            match self.gtk_shutdown_signal() {
-                Err(e) => {
-                    return Err(OpenSettingsErr::ThreadPredictedTerminated(e));
-                }
-                _ => {}
-            }
-        }
-
-        let res = self.external.channels.start_settings_ui.send(());
-
-        if let Err(e) = res {
-            return Err(OpenSettingsErr::FailedToSendStartSignal(e));
-        }
-
-        Ok(())
     }
 }
 

@@ -99,7 +99,9 @@ pub fn if_surface_size_changed(app: &mut Application) {
         }
 
         *last_surface_size = app.systems.window.inner_size();
-        app.resize(app.systems.window.inner_size());
+        app.mirror
+            .render
+            .resize(&mut app.systems.wgpu, app.systems.window.inner_size());
     }
 }
 

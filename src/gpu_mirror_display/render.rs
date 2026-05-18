@@ -277,9 +277,10 @@ pub fn on_redraw(mut app: &mut Application) {
 
     match app.render(imported_dma) {
         Ok(_) => {}
-        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
-            app.resize(app.systems.window.inner_size())
-        }
+        Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => app
+            .mirror
+            .render
+            .resize(&mut app.systems.wgpu, app.systems.window.inner_size()),
         Err(v) => {
             println!("{v:?}");
         }
@@ -411,7 +412,7 @@ impl Application {
         //
         // it's a good optimization because it's expected there will be lots of different versions running wasting
         // lots of resources drawing user interfaces that don't exist.
-        let ui_encoder = match self.should_render_ui() {
+        let ui_encoder = match self.mirror.render.should_render_ui(&self) {
             true => {
                 let mut ui_encoder = self.systems.wgpu.device.create_command_encoder(
                     &wgpu::CommandEncoderDescriptor {
@@ -1008,6 +1009,8 @@ fn if_frame_size_changed(app: &mut Application, frame: &Arc<LastReported>) {
 
     if *last_frame_size != frame.window_dimensions {
         *last_frame_size = frame.window_dimensions;
-        app.resize(app.systems.window.inner_size());
+        app.mirror
+            .render
+            .resize(&mut app.systems.wgpu, app.systems.window.inner_size());
     }
 }

@@ -668,7 +668,9 @@ impl ApplicationHandler<()> for WinitHandler {
             .send(app.configuration.clone())
             .unwrap();
 
-        app.resize(window.as_ref().unwrap().inner_size());
+        app.mirror
+            .render
+            .resize(&mut app.systems.wgpu, window.as_ref().unwrap().inner_size());
 
         on_redraw(&mut app);
 
@@ -702,7 +704,9 @@ impl ApplicationHandler<()> for WinitHandler {
                 .resize_countdown_from_new_settings
                 <= 0
             {
-                app.resize(app.systems.window.inner_size());
+                app.mirror
+                    .render
+                    .resize(&mut app.systems.wgpu, app.systems.window.inner_size());
                 app.app_state
                     .intricate_todo_refactor
                     .resize_countdown_started = false;
