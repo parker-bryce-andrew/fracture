@@ -1440,7 +1440,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                 FilterMode::Linear
             },
             window_interactions: WindowInteractions::Interactable,
-            preset: Default::default(),
+            present: Default::default(),
         };
 
         let mut result = temp.build_new_full_settings_state();

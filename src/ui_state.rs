@@ -164,7 +164,7 @@ impl UiState {
             magnify_filter: temp.magnify_filter,
             minify_filter: temp.minify_filter,
             window_interactions: temp.window_interactions,
-            preset: temp.preset,
+            present: temp.preset,
         };
 
         temp
@@ -190,7 +190,7 @@ pub struct SetUiState {
     pub magnify_filter: wgpu::FilterMode,
     pub minify_filter: wgpu::FilterMode,
     pub window_interactions: WindowInteractions,
-    pub preset: PresentMode,
+    pub present: PresentMode,
 }
 
 impl SetUiState {
@@ -213,7 +213,7 @@ impl SetUiState {
             magnify_filter,
             minify_filter,
             window_interactions,
-            preset,
+            present: preset,
         } = temp;
 
         let selected_preset;
@@ -389,7 +389,7 @@ impl Into<SetUiState> for CreateUiState {
             magnify_filter,
             minify_filter,
             window_interactions: window_interactions,
-            preset: presets,
+            present: presets,
         }
     }
 }
