@@ -1,6 +1,7 @@
-use super::{state::State, window_cropping::CroppedArea};
+use super::window_cropping::CroppedArea;
 use crate::{
     global_application_state::{FrameData, FrameLayout, LastReported},
+    gpu_mirror_display::state::Application,
     ui_state::VideoLocation,
 };
 use smithay::backend::allocator::Buffer;
@@ -91,7 +92,7 @@ pub(crate) struct PositioningData<'a> {
 /// screen with WebGPU. This method just handles the cropping and positioning
 /// back to screen coordinates.
 pub(crate) fn write_image_to_texture(
-    state: &State,
+    app: &Application,
     tex: &wgpu::Texture,
     img: &OverlayImage,
     position: (i32, i32),
@@ -105,7 +106,7 @@ pub(crate) fn write_image_to_texture(
         DmaOrCpuMemory::Cpu(items) => items,
     };
 
-    state.queue.write_texture(
+    app.systems.wgpu.queue.write_texture(
         TexelCopyTextureInfo {
             texture: &tex,
             mip_level: 0,

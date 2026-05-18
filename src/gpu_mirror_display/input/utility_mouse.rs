@@ -1,14 +1,14 @@
-use crate::gpu_mirror_display::{state::AdditionalRenderingState, utility_texture::OverlayImage};
+use crate::gpu_mirror_display::{state::Application, utility_texture::OverlayImage};
 use std::time::{Duration, SystemTime};
 
-pub(crate) fn remove_expired_mouse_events(additional_state: &mut AdditionalRenderingState) {
+pub(crate) fn remove_expired_mouse_events(app: &mut Application) {
     let mut i = 0;
 
-    while i < additional_state.mouse_clicks.len() {
-        let current = additional_state.mouse_clicks[i].1 + Duration::from_millis(300);
+    while i < app.user_interaction.mouse_clicks.len() {
+        let current = app.user_interaction.mouse_clicks[i].1 + Duration::from_millis(300);
 
         if SystemTime::now() > current {
-            additional_state.mouse_clicks.remove(i);
+            app.user_interaction.mouse_clicks.remove(i);
         } else {
             i += 1;
         }
@@ -16,11 +16,11 @@ pub(crate) fn remove_expired_mouse_events(additional_state: &mut AdditionalRende
 
     let mut i = 0;
 
-    while i < additional_state.mouse_downs.len() {
-        let current = additional_state.mouse_downs[i].1 + Duration::from_millis(300);
+    while i < app.user_interaction.mouse_downs.len() {
+        let current = app.user_interaction.mouse_downs[i].1 + Duration::from_millis(300);
 
         if SystemTime::now() > current {
-            additional_state.mouse_downs.remove(i);
+            app.user_interaction.mouse_downs.remove(i);
         } else {
             i += 1;
         }

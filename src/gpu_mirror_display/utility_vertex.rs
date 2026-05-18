@@ -1,5 +1,8 @@
-use super::{state::State, window_cropping::CroppedArea};
-use crate::ui_state::{ScaleDecision, UiState, VideoAspect, VideoLocation, WindowBehaviour};
+use super::window_cropping::CroppedArea;
+use crate::{
+    gpu_mirror_display::state::Application,
+    ui_state::{ScaleDecision, UiState, VideoAspect, VideoLocation, WindowBehaviour},
+};
 use wgpu::util::DeviceExt;
 use winit::dpi::PhysicalSize;
 
@@ -10,10 +13,9 @@ pub enum TextureTransformed {
 }
 
 pub fn calculate_frame_transformations_for_settings(
+    app: &Application,
     settings_state: &UiState,
-    // _frame: &Arc<LastReported>,
     crop: &CroppedArea,
-    state: &State,
 ) -> (Vec<Vertex>, TextureTransformed) {
     let mut temp = match &settings_state.aspect_ratio {
         VideoAspect::MaintainAspectRatio(scale_decision, window_behaviour) => {
@@ -32,7 +34,7 @@ pub fn calculate_frame_transformations_for_settings(
                             &center_verticies(
                                 VERTICES.to_vec(),
                                 (crop.size.width, crop.size.height),
-                                state.window.inner_size().into(),
+                                app.systems.window.window.inner_size().into(),
                             ),
                             &pos,
                         ),
@@ -49,7 +51,7 @@ pub fn calculate_frame_transformations_for_settings(
 
     // If texture matches the window size, it should never be transformed so that
     // it maintains it's pixel perfect output.
-    let PhysicalSize { width, height } = state.window.inner_size();
+    let PhysicalSize { width, height } = app.systems.window.window.inner_size();
 
     if crop.size.width as u32 == width && crop.size.height <= height
         || crop.size.height as u32 == height && crop.size.width as u32 <= width
@@ -117,10 +119,12 @@ pub fn center_verticies(
         .collect()
 }
 
-pub fn add_verticies_to_gpu_buffer(state: &mut State, verticies: &Vec<Vertex>) {
+pub fn add_verticies_to_gpu_buffer(app: &mut Application, verticies: &Vec<Vertex>) {
     let vert_bytes = bytemuck::cast_slice(&verticies);
 
-    let verticies = state
+    let verticies = app
+        .systems
+        .wgpu
         .device
         .create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -128,7 +132,7 @@ pub fn add_verticies_to_gpu_buffer(state: &mut State, verticies: &Vec<Vertex>) {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-    state.vertex_buffer = verticies;
+    app.mirror.render.mirror_rendering.vertex_buffer = verticies;
 }
 
 #[repr(C)]

@@ -1,18 +1,16 @@
+use super::window_cropping::CroppedArea;
 use crate::{
-    global_application_state::LastReported,
     gpu_mirror_display::{
+        state::Application,
         utility_vertex::{VERTICES, center_verticies, position_centered_verts},
         window_cropping::Size,
     },
-    ui_state::{ScaleDecision, UiState, VideoAspect, VideoLocation, WindowBehaviour},
+    ui_state::{ScaleDecision, VideoAspect, VideoLocation, WindowBehaviour},
 };
-use std::sync::Arc;
 use winit::dpi::PhysicalSize;
 
-use super::{state::State, window_cropping::CroppedArea};
-
 fn if_needed_resize_window_to_scaled_frame_size(
-    state: &State,
+    app: &Application,
     (frame_width, frame_height): &(u32, u32),
     (width, height): (u32, u32),
 ) {
@@ -52,68 +50,74 @@ fn if_needed_resize_window_to_scaled_frame_size(
         let new_height = (height as f32 * as_percent_y).round() as u32;
 
         if (new_width, new_height) != (width, height) {
-            let _ = state.window.request_inner_size(PhysicalSize::new(
-                (new_width as i32).max(1),
-                (new_height as i32).max(1),
-            ));
+            let _ = app
+                .systems
+                .window
+                .window
+                .request_inner_size(PhysicalSize::new(
+                    (new_width as i32).max(1),
+                    (new_height as i32).max(1),
+                ));
         }
     }
 }
 
 pub fn if_needed_resize_window_to_frame_size(
-    state: &State,
-    // frame: &Arc<LastReported>,
+    app: &Application,
     (frame_width, frame_height): &(u32, u32),
     (surface_width, surface_height): (u32, u32),
 ) {
     if (*frame_width as u32, *frame_height as u32) != (surface_width, surface_height) {
-        let _ = state
+        let _ = app
+            .systems
+            .window
             .window
             .request_inner_size(PhysicalSize::new(*frame_width as i32, *frame_height as i32));
     }
 }
 
-pub fn if_surface_size_changed(last_surface_size: &mut PhysicalSize<u32>, state: &mut State) {
-    if *last_surface_size != state.window.inner_size() {
+pub fn if_surface_size_changed(app: &mut Application) {
+    let last_surface_size = &mut app.app_state.last_iteration.last_surface_size;
+
+    if *last_surface_size != app.systems.window.window.inner_size() {
         let (max_width, max_height) = (
-            state.device.limits().max_texture_dimension_2d,
-            state.device.limits().max_texture_dimension_2d,
+            app.systems.wgpu.device.limits().max_texture_dimension_2d,
+            app.systems.wgpu.device.limits().max_texture_dimension_2d,
         );
 
-        let PhysicalSize { width, height } = state.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
 
         if width > max_width {
-            let _ = state
+            let _ = app
+                .systems
+                .window
                 .window
                 .request_inner_size(PhysicalSize::new(max_width as i32, height as i32));
         }
 
-        let PhysicalSize { width, height } = state.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
 
         if height > max_height {
-            let _ = state
+            let _ = app
+                .systems
+                .window
                 .window
                 .request_inner_size(PhysicalSize::new(width as i32, max_height as i32));
         }
 
-        *last_surface_size = state.window.inner_size();
-        state.resize(state.window.inner_size());
+        *last_surface_size = app.systems.window.window.inner_size();
+        app.resize(app.systems.window.window.inner_size());
     }
 }
 
 /// if VideoAspect::MaintainAspectRatio(_, WindowBehaviour::SizeMatchesMirrorAspect)
-pub fn if_settings_maintain_aspect_ratio(
-    state: &State,
-    cropped: &CroppedArea,
-    _frame: &Arc<LastReported>,
-    settings_state: &UiState,
-) {
+pub fn if_settings_maintain_aspect_ratio(app: &Application, cropped: &CroppedArea) {
     if let VideoAspect::MaintainAspectRatio(
         scale_decision,
         WindowBehaviour::SizeMatchesMirrorAspect,
-    ) = &settings_state.aspect_ratio
+    ) = &app.configuration.aspect_ratio
     {
-        let PhysicalSize { width, height } = state.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
         let Size {
             width: frame_width,
             height: frame_height,
@@ -123,7 +127,7 @@ pub fn if_settings_maintain_aspect_ratio(
             // The window (surface) size is supposed to be the exact same size as recording of the other window.
             ScaleDecision::DontScale => {
                 if_needed_resize_window_to_frame_size(
-                    &state,
+                    &app,
                     &(frame_width, frame_height),
                     (width, height),
                 );
@@ -133,7 +137,7 @@ pub fn if_settings_maintain_aspect_ratio(
             // the size of the inner scaled recorded parts. This is how Firefox pip functions
             ScaleDecision::Scale => {
                 if_needed_resize_window_to_scaled_frame_size(
-                    &state,
+                    &app,
                     &(frame_width, frame_height),
                     (width, height),
                 );

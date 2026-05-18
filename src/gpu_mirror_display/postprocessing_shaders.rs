@@ -1,7 +1,6 @@
-use super::{
-    pipeline_definitions::define_primary_pipeline,
-    state::{AdditionalRenderingState, State},
-};
+use crate::gpu_mirror_display::state::Application;
+
+use super::pipeline_definitions::define_primary_pipeline;
 use naga::{
     Module,
     valid::{Capabilities, ModuleInfo, ValidationFlags},
@@ -129,13 +128,12 @@ pub async fn define_postprocessing_mirror_shader(
 }
 
 pub fn if_shader_compilation_requested(
+    app: &mut Application,
     rt: &tokio::runtime::Runtime,
-    state: &mut State,
-    additional_state: &mut AdditionalRenderingState,
     render_pipeline_layout: &PipelineLayout,
 ) {
-    if additional_state.settings_state.gpu_requested_compile {
-        if let Some(v) = &mut additional_state.settings_state.postprocessor {
+    if app.configuration.gpu_requested_compile {
+        if let Some(v) = &mut app.configuration.postprocessor {
             let new_shader = v.submitted_postprocessor.clone();
 
             let new_shader = if let Some(v) = &new_shader {
@@ -147,7 +145,7 @@ pub fn if_shader_compilation_requested(
             };
 
             let result = rt.block_on(define_postprocessing_mirror_shader(
-                &state.device,
+                &app.systems.wgpu.device,
                 new_shader.clone(),
             ));
 
@@ -164,7 +162,10 @@ pub fn if_shader_compilation_requested(
                 return_value.last_errors = Some(result.unwrap_err());
 
                 let default = rt
-                    .block_on(define_postprocessing_mirror_shader(&state.device, None))
+                    .block_on(define_postprocessing_mirror_shader(
+                        &app.systems.wgpu.device,
+                        None,
+                    ))
                     .unwrap();
 
                 return_value.submitted_postprocessor = Some(default.extract_postprocessor());
@@ -173,36 +174,45 @@ pub fn if_shader_compilation_requested(
             };
 
             let pipeline = define_primary_pipeline(
-                &state.device,
+                &app.systems.wgpu.device,
                 &module,
                 &render_pipeline_layout,
-                &state.config.format,
+                &app.systems.wgpu.config.format,
             );
 
-            state.mirror_output_rendering_pipeline = pipeline;
+            app.mirror
+                .render
+                .mirror_rendering
+                .mirror_output_rendering_pipeline = pipeline;
 
             *v = return_value;
         } else {
             let default = rt
-                .block_on(define_postprocessing_mirror_shader(&state.device, None))
+                .block_on(define_postprocessing_mirror_shader(
+                    &app.systems.wgpu.device,
+                    None,
+                ))
                 .unwrap();
 
             let pipeline = define_primary_pipeline(
-                &state.device,
+                &app.systems.wgpu.device,
                 &default.device_module,
                 &render_pipeline_layout,
-                &state.config.format,
+                &app.systems.wgpu.config.format,
             );
 
-            state.mirror_output_rendering_pipeline = pipeline;
+            app.mirror
+                .render
+                .mirror_rendering
+                .mirror_output_rendering_pipeline = pipeline;
         }
 
-        additional_state.settings_state.gpu_requested_compile = false;
+        app.configuration.gpu_requested_compile = false;
 
-        additional_state
+        app.external
             .channels
             .gpu_sender_request
-            .send(additional_state.settings_state.clone())
+            .send(app.configuration.clone())
             .unwrap();
     }
 }

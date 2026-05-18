@@ -1,5 +1,7 @@
+use super::defaults::{CROP_COLOR, SELECTION_WINDOW_OFFSETS};
 use crate::{
     global_application_state::LastReported,
+    gpu_mirror_display::state::Application,
     ui_state::{
         ScaleDecision, TitleBarDisplay, UiState, VideoAspect, VideoLocation, WindowBackground,
         WindowBehaviour,
@@ -8,19 +10,14 @@ use crate::{
 use std::sync::Arc;
 use winit::dpi::PhysicalSize;
 
-use super::{
-    defaults::{CROP_COLOR, SELECTION_WINDOW_OFFSETS},
-    state::{AdditionalRenderingState, State},
-};
+pub fn start_crop_selection(app: &mut Application) {
+    app.systems.window.window.set_maximized(false);
+    app.systems.window.window.set_minimized(false);
 
-pub fn start_crop_selection(additional_state: &mut AdditionalRenderingState, state: &mut State) {
-    state.window.set_maximized(false);
-    state.window.set_minimized(false);
+    app.app_state.intricate_todo_refactor.crop_button_pressed = true;
+    app.app_state.intricate_todo_refactor.new_settings = true;
 
-    additional_state.crop_button_pressed = true;
-    additional_state.new_settings = true;
-
-    additional_state.settings_state = UiState {
+    app.configuration = UiState {
         display_title: TitleBarDisplay::TitleBarVisible,
         aspect_ratio: VideoAspect::MaintainAspectRatio(
             ScaleDecision::DontScale,
@@ -36,68 +33,68 @@ pub fn start_crop_selection(additional_state: &mut AdditionalRenderingState, sta
         ..Default::default()
     };
 
-    additional_state
+    app.external
         .channels
         .gpu_sender_request
-        .send(additional_state.settings_state.clone())
+        .send(app.configuration.clone())
         .unwrap();
 
-    let _ = additional_state.gtk_shutdown_signal_checked();
+    let _ = app.gtk_shutdown_signal_checked();
 
-    additional_state.cropped = Some(CroppedArea {
+    app.app_state.cropped = Some(CroppedArea {
         relative_to_window_position: InitialAbsoluteWindowPosition { x: 0, y: 0 },
         size: Size {
-            width: additional_state.last_frame_size.0,
-            height: additional_state.last_frame_size.1,
+            width: app.app_state.last_iteration.last_frame_size.0,
+            height: app.app_state.last_iteration.last_frame_size.1,
         },
         relative_to_frame_position: InitialAbsoluteFramePosition {
-            x: state.last_reported_offsets.0,
-            y: state.last_reported_offsets.1,
+            x: app.app_state.last_iteration.last_reported_offsets.0,
+            y: app.app_state.last_iteration.last_reported_offsets.1,
         },
     });
 
-    state
+    app.systems
+        .window
         .window
         .request_inner_size(PhysicalSize {
-            width: additional_state.cropped.as_ref().unwrap().size.width
-                + SELECTION_WINDOW_OFFSETS.0,
-            height: additional_state.cropped.as_ref().unwrap().size.height
+            width: app.app_state.cropped.as_ref().unwrap().size.width + SELECTION_WINDOW_OFFSETS.0,
+            height: app.app_state.cropped.as_ref().unwrap().size.height
                 + SELECTION_WINDOW_OFFSETS.1,
         })
         .unwrap();
 }
 
 pub fn if_crop_button_is_active(
-    state: &State,
+    app: &mut Application,
     crop_button_press: &bool,
     frame: &Arc<LastReported>,
-    additional_state: &mut AdditionalRenderingState,
 ) {
     let cropped_button_press: bool = *crop_button_press;
 
     if cropped_button_press {
-        if state.window.is_maximized() {
-            state.window.set_maximized(false);
+        if app.systems.window.window.is_maximized() {
+            app.systems.window.window.set_maximized(false);
         }
 
-        let PhysicalSize { width, height } = state.window.inner_size();
+        let PhysicalSize { width, height } = app.systems.window.window.inner_size();
         let (f_w, f_h) = frame.window_dimensions;
         let (off_w, off_h) = SELECTION_WINDOW_OFFSETS;
 
         if f_w + off_w != width || f_h + off_h != height {
-            additional_state.cropped = Some(CroppedArea {
+            app.app_state.cropped = Some(CroppedArea {
                 relative_to_window_position: InitialAbsoluteWindowPosition { x: 0, y: 0 },
                 size: Size {
                     width: frame.window_dimensions.0,
                     height: frame.window_dimensions.1,
                 },
                 relative_to_frame_position: InitialAbsoluteFramePosition {
-                    x: state.last_reported_offsets.0,
-                    y: state.last_reported_offsets.1,
+                    x: app.app_state.last_iteration.last_reported_offsets.0,
+                    y: app.app_state.last_iteration.last_reported_offsets.1,
                 },
             });
 
-            state
+            app.systems
+                .window
                 .window
                 .request_inner_size(PhysicalSize {
                     width: f_w + off_w,
@@ -141,27 +138,26 @@ pub struct CroppedArea {
     pub size: Size,
 }
 
-pub fn if_in_crop_complete_crop(
-    additional_state: &mut AdditionalRenderingState,
-    state: &State,
-    from: CropEndTriggeredFrom,
-) {
-    let PhysicalSize { width, height } = state.window.inner_size();
+pub fn if_in_crop_complete_crop(app: &mut Application, from: CropEndTriggeredFrom) {
+    let PhysicalSize { width, height } = app.systems.window.window.inner_size();
 
-    if additional_state.in_crop_selection
-        || additional_state.crop_button_pressed && (from == CropEndTriggeredFrom::EnterPress)
+    if app.app_state.intricate_todo_refactor.in_crop_selection
+        || app.app_state.intricate_todo_refactor.crop_button_pressed
+            && (from == CropEndTriggeredFrom::EnterPress)
     {
         let (min_x, max_x) = {
             match from {
                 CropEndTriggeredFrom::MouseUp => (
-                    additional_state
+                    app.app_state
+                        .last_iteration
                         .last_known_mouse_position
                         .0
-                        .min(additional_state.mouse_select_start.0),
-                    additional_state
+                        .min(app.user_interaction.mouse_select_start.0),
+                    app.app_state
+                        .last_iteration
                         .last_known_mouse_position
                         .0
-                        .max(additional_state.mouse_select_start.0),
+                        .max(app.user_interaction.mouse_select_start.0),
                 ),
                 CropEndTriggeredFrom::EnterPress => (0, width),
             }
@@ -170,14 +166,16 @@ pub fn if_in_crop_complete_crop(
         let (min_y, max_y) = {
             match from {
                 CropEndTriggeredFrom::MouseUp => (
-                    additional_state
+                    app.app_state
+                        .last_iteration
                         .last_known_mouse_position
                         .1
-                        .min(additional_state.mouse_select_start.1),
-                    additional_state
+                        .min(app.user_interaction.mouse_select_start.1),
+                    app.app_state
+                        .last_iteration
                         .last_known_mouse_position
                         .1
-                        .max(additional_state.mouse_select_start.1),
+                        .max(app.user_interaction.mouse_select_start.1),
                 ),
                 CropEndTriggeredFrom::EnterPress => (0, height),
             }
@@ -193,24 +191,24 @@ pub fn if_in_crop_complete_crop(
 
         let window_position = InitialAbsoluteWindowPosition { x: pos.0, y: pos.1 };
 
-        additional_state.cropped = Some(CroppedArea {
+        app.app_state.cropped = Some(CroppedArea {
             relative_to_frame_position: InitialAbsoluteFramePosition {
-                x: window_position.x + state.last_reported_offsets.0,
-                y: window_position.y + state.last_reported_offsets.1,
+                x: window_position.x + app.app_state.last_iteration.last_reported_offsets.0,
+                y: window_position.y + app.app_state.last_iteration.last_reported_offsets.1,
             },
             relative_to_window_position: window_position,
             size: Size {
                 width: ((max_x as i32 - min_x as i32) + 1 as i32)
-                    .min(additional_state.last_frame_size.0 as i32 - pos.0 as i32)
+                    .min(app.app_state.last_iteration.last_frame_size.0 as i32 - pos.0 as i32)
                     .max(0) as u32,
                 height: ((max_y as i32 - min_y as i32) + 1 as i32)
-                    .min(additional_state.last_frame_size.1 as i32 - pos.1 as i32)
+                    .min(app.app_state.last_iteration.last_frame_size.1 as i32 - pos.1 as i32)
                     .max(0) as u32,
             },
         });
 
-        if additional_state.cropped.as_ref().unwrap().size.width <= 5
-            || additional_state.cropped.as_ref().unwrap().size.height <= 5
+        if app.app_state.cropped.as_ref().unwrap().size.width <= 5
+            || app.app_state.cropped.as_ref().unwrap().size.height <= 5
         {
             // This is kinda a hack to force small selections and entirely offscreen selections to fullscreen. I'm doubtful it will always work,
             // and it seems very likely to crash. I think the section of code that crops and repositions the frame
@@ -221,9 +219,9 @@ pub fn if_in_crop_complete_crop(
             // I'm not fixing it at this time because I want to focus on more important issues before spending time trying to determine
             // what is wrong with it. If this is commented out, (The if statement is removed, and the else is left to be called always)
             // then a 1 pixel selection is made, the crash will happen.
-            if_in_crop_complete_crop(additional_state, state, CropEndTriggeredFrom::EnterPress);
+            if_in_crop_complete_crop(app, CropEndTriggeredFrom::EnterPress);
         } else {
-            additional_state.settings_state = UiState {
+            app.configuration = UiState {
                 display_title: TitleBarDisplay::HiddenTitleBar,
                 aspect_ratio: VideoAspect::MaintainAspectRatio(
                     ScaleDecision::Scale,
@@ -237,24 +235,25 @@ pub fn if_in_crop_complete_crop(
                 ..Default::default()
             };
 
-            additional_state.new_settings = true;
+            app.app_state.intricate_todo_refactor.new_settings = true;
 
-            state
+            app.systems
+                .window
                 .window
                 .request_inner_size(PhysicalSize {
-                    width: additional_state.cropped.as_ref().unwrap().size.width,
-                    height: additional_state.cropped.as_ref().unwrap().size.height,
+                    width: app.app_state.cropped.as_ref().unwrap().size.width,
+                    height: app.app_state.cropped.as_ref().unwrap().size.height,
                 })
                 .unwrap();
 
-            additional_state
+            app.external
                 .channels
                 .gpu_sender_request
-                .send(additional_state.settings_state.clone())
+                .send(app.configuration.clone())
                 .unwrap();
         }
 
-        additional_state.in_crop_selection = false;
-        additional_state.crop_button_pressed = false;
+        app.app_state.intricate_todo_refactor.in_crop_selection = false;
+        app.app_state.intricate_todo_refactor.crop_button_pressed = false;
     }
 }

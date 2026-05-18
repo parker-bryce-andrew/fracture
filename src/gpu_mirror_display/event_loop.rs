@@ -13,14 +13,17 @@ use crate::gpu_mirror_display::postprocessing_shaders::{
 };
 use crate::gpu_mirror_display::render::on_redraw;
 use crate::gpu_mirror_display::state::{
-    AdditionalRenderingState, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER, DmaStartupChecks, State,
+    AppState, AppSystems, AppWindow, Application, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER,
+    DmaStartupChecks, EnumeratedState, ExternalControl, InitState, IntricateState, Mirror,
+    MirrorRenderer, MirrorRendering, PipewireController, PreviousIteration, SettingsGtk,
+    SharedRender, UiRendering, UserInteractionState, WgpuContainer,
 };
 use crate::gpu_mirror_display::utility_texture::DmaOrCpuMemory;
 use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
 use crate::gpu_mirror_display::{binary_images, shutdown};
 use crate::ui_state::{
-    DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, ScaleDecision, TitleBarDisplay, UiState,
-    VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
+    DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, GreenScreen, ScaleDecision, TitleBarDisplay,
+    UiState, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
 };
 use lamco_wgpu::SupportedFormat;
 use std::mem;
@@ -47,14 +50,13 @@ pub struct WebGpuReport {
     pub formats: Option<Vec<SupportedFormat>>,
     pub using_bridge: bool,
 }
-
+pub const INDICES: &[u16] = &[2, 3, 1, 2, 1, 0];
 struct State3 {
     window: Option<Arc<Window>>,
-    state: Option<State>,
-    add: Option<AdditionalRenderingState>,
     channels: Arc<GpuChannelSide>,
     counter: i32,
     about_to_wait_count: u32,
+    temp_state: Option<Application>,
 }
 
 impl ApplicationHandler<()> for State3 {
@@ -290,15 +292,11 @@ impl ApplicationHandler<()> for State3 {
 
         surface.configure(&device, &config);
 
-        const INDICES: &[u16] = &[2, 3, 1, 2, 1, 0];
-
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
-
-        let num_indices = INDICES.len() as u32;
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
@@ -545,7 +543,7 @@ impl ApplicationHandler<()> for State3 {
         );
 
         let sel = selected_surface_capabilities.present.clone();
-
+        /*
         let mut state = State {
             surface,
             queue,
@@ -570,7 +568,7 @@ impl ApplicationHandler<()> for State3 {
             device: device,
             vertex_buffer,
             index_buffer,
-            num_indices,
+            // num_indices,
             diffuse_bind_group,
             ui_rendering_pipeline: render_pipeline2,
             vertex_buffer2: vertex_buffer2,
@@ -642,157 +640,340 @@ impl ApplicationHandler<()> for State3 {
             keep_borders: false,
             resize_countdown_from_new_settings: 0,
             resize_countdown_started: true,
+        }; */
+
+        let mut app = Application {
+            app_state: AppState {
+                cropped: None,
+                current_activity: EnumeratedState::WaitingForSelection,
+                initialization_checks: InitState {
+                    dma_startup_checks: DmaStartupChecks {
+                        is_complete: false,
+                        is_fail: false,
+                        frames_checked: 0,
+                        frames_without_data: std::sync::Arc::new(std::sync::Mutex::new(0)),
+                        frames_with_data: std::sync::Arc::new(std::sync::Mutex::new(0)),
+                        fail_at: 30,
+                        dma_error_count: 0,
+                    },
+                    first_dma_sent: false,
+                },
+                last_iteration: PreviousIteration {
+                    last_fracture_display_origin: Default::default(),
+                    last_fracture_dimensions: Default::default(),
+                    last_reported_offsets: (0, 0),
+                    last_surface_size: self.window.as_ref().unwrap().inner_size(),
+                    last_frame_size: (0, 0),
+                    last_known_mouse_position: (0, 0),
+                },
+                intricate_todo_refactor: IntricateState {
+                    crop_button_pressed: true,
+                    in_crop_selection: true,
+                    keep_borders: false,
+                    resize_countdown_from_new_settings: 0,
+                    resize_countdown_started: true,
+                    should_shutdown: false,
+                    active_present: sel,
+                    new_settings: true,
+                },
+            },
+            user_interaction: UserInteractionState {
+                mouse_clicks: vec![],
+                mouse_downs: vec![],
+                mouse_over_screen: false,
+                mouse_is_down: false,
+                mouse_select_start: (0, 0),
+                mouse_resize_state: ResizeInteractionsState::None,
+            },
+            mirror: Mirror {
+                render: MirrorRenderer {
+                    ui_rendering: UiRendering {
+                        ui_rendering_pipeline: render_pipeline2.clone(),
+                        vertex_buffer2: vertex_buffer2.clone(),
+                    },
+                    mirror_rendering: MirrorRendering {
+                        mirror_output_rendering_pipeline: render_pipeline.clone(),
+                        vertex_buffer: vertex_buffer,
+                        mirror_fractured_texture: device.create_texture(&wgpu::TextureDescriptor {
+                            size: Extent3d {
+                                width: size.width,
+                                height: size.height,
+                                depth_or_array_layers: 1,
+                            },
+                            mip_level_count: 1,
+                            sample_count: 1,
+                            dimension: wgpu::TextureDimension::D2,
+                            format: video_format.format,
+                            usage: wgpu::TextureUsages::TEXTURE_BINDING
+                                | wgpu::TextureUsages::COPY_DST,
+                            label: Some("mirror_placeholder"),
+                            view_formats: &[],
+                        }),
+                        pipeline_layout: Some(render_pipeline_layout),
+                    },
+                    shared_rendering: SharedRender {
+                        index_buffer: index_buffer,
+                        diffuse_sampler: Some(diffuse_sampler),
+                        bindings: diffuse_bind_group,
+                        ui_flags: Some(ui_flags),
+                        used_video_format: video_format.clone(),
+                        texture_bind_group_layout: Some(texture_bind_group_layout),
+                        wrapping_render_count: 0,
+                        available_presents: ordered_presets,
+                        default_selected_capabilities: selected_surface_capabilities,
+                    },
+                },
+            },
+            configuration: UiState {
+                display_title: TitleBarDisplay::TitleBarVisible,
+                aspect_ratio: VideoAspect::MaintainAspectRatio(
+                    ScaleDecision::DontScale,
+                    WindowBehaviour::SizeSetByUser(VideoLocation::Center),
+                ),
+                frame_transparency: 100.0,
+                need_rebuild: true,
+                updated: true,
+                green_screen: GreenScreen::None,
+                postprocessor: Default::default(),
+                background: WindowBackground::Color(
+                    CROP_COLOR.0,
+                    CROP_COLOR.1,
+                    CROP_COLOR.2,
+                    CROP_COLOR.3,
+                ),
+                ..Default::default()
+            },
+            systems: AppSystems {
+                wgpu: WgpuContainer {
+                    bridge: bridge,
+                    device: device,
+                    queue: queue,
+                    config: config,
+                    surface: surface,
+                },
+                window: AppWindow {
+                    window: self.window.as_ref().unwrap().clone(),
+                },
+                async_rt: Some(rt),
+            },
+            external: ExternalControl {
+                settings_ui: SettingsGtk,
+                pipewire: PipewireController,
+                channels: self.channels.clone(),
+            },
         };
 
-        additional_state
+        app.external
             .channels
             .gpu_sender_request
-            .send(additional_state.settings_state.clone())
+            .send(app.configuration.clone())
             .unwrap();
 
-        state.resize(self.window.as_ref().unwrap().inner_size());
+        app.resize(self.window.as_ref().unwrap().inner_size());
 
-        on_redraw(&mut state, &mut additional_state);
+        on_redraw(&mut app);
 
-        self.state = Some(state);
-        self.add = Some(additional_state);
+        self.temp_state = Some(app);
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
-        if !self.add.is_some() && !self.state.is_some() {
+        if !self.temp_state.is_some() {
             return;
         }
 
-        let mut additional_state: AdditionalRenderingState = self.add.take().unwrap();
-        let mut state = self.state.take().unwrap();
+        let mut app = self.temp_state.take().unwrap();
 
         // [1] state.resize is expensive, but needs to happen or the image will become distorted.
         //
         // To manage, it waits until a set number (60 frames) until calling the funciton to resize.
         // This is because it's expected that most of the time, there won't be new settings, so
         // the image can become temporarily distorted without worrying about it.
-        if additional_state.resize_countdown_started {
-            additional_state.resize_countdown_from_new_settings -= 1;
+        if app
+            .app_state
+            .intricate_todo_refactor
+            .resize_countdown_started
+        {
+            app.app_state
+                .intricate_todo_refactor
+                .resize_countdown_from_new_settings -= 1;
 
-            if additional_state.resize_countdown_from_new_settings <= 0 {
-                state.resize(state.window.inner_size());
-                additional_state.resize_countdown_started = false;
+            if app
+                .app_state
+                .intricate_todo_refactor
+                .resize_countdown_from_new_settings
+                <= 0
+            {
+                app.resize(app.systems.window.window.inner_size());
+                app.app_state
+                    .intricate_todo_refactor
+                    .resize_countdown_started = false;
             }
         }
 
-        while let Ok(new) = additional_state.channels.new_settings_receiver.try_recv() {
+        while let Ok(new) = app.external.channels.new_settings_receiver.try_recv() {
             // This is expensive, but needs to happen or the image will become distorted. [2]
-            if !additional_state.resize_countdown_started {
-                additional_state.resize_countdown_from_new_settings =
-                    COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER;
+            if !app
+                .app_state
+                .intricate_todo_refactor
+                .resize_countdown_started
+            {
+                app.app_state
+                    .intricate_todo_refactor
+                    .resize_countdown_from_new_settings = COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER;
 
-                additional_state.resize_countdown_started = true;
+                app.app_state
+                    .intricate_todo_refactor
+                    .resize_countdown_started = true;
             }
 
-            additional_state.settings_state = new;
-            additional_state.new_settings = true;
+            app.configuration = new;
+            app.app_state.intricate_todo_refactor.new_settings = true;
 
             let mut should_update = false;
 
-            if additional_state
-                .settings_state
-                .should_define_new_primary_sampler
-            {
-                state.diffuse_sampler = Some(define_primary_sampler(
-                    &state.device,
-                    additional_state.settings_state.magnify_filter,
-                    additional_state.settings_state.minify_filter,
+            if app.configuration.should_define_new_primary_sampler {
+                app.mirror.render.shared_rendering.diffuse_sampler = Some(define_primary_sampler(
+                    &app.systems.wgpu.device,
+                    app.configuration.magnify_filter,
+                    app.configuration.minify_filter,
                 ));
 
-                additional_state
-                    .settings_state
-                    .should_define_new_primary_sampler = false;
+                app.configuration.should_define_new_primary_sampler = false;
 
                 should_update = true;
             }
 
-            if additional_state.settings_state.should_define_new_preset {
-                let pre = additional_state.settings_state.preset.clone();
+            if app.configuration.should_define_new_preset {
+                let pre = app.configuration.preset.clone();
 
-                let cfg = match state.available_presents.contains(&pre) {
+                let cfg = match app
+                    .mirror
+                    .render
+                    .shared_rendering
+                    .available_presents
+                    .contains(&pre)
+                {
                     true => {
                         let PhysicalSize {
                             width: w,
                             height: h,
-                        } = state.window.inner_size();
+                        } = app.systems.window.window.inner_size();
 
                         let config = wgpu::SurfaceConfiguration {
                             usage: wgpu::TextureUsages::COPY_SRC
                                 | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                            format: state.default_selected_caps.texture,
+                            format: app
+                                .mirror
+                                .render
+                                .shared_rendering
+                                .default_selected_capabilities
+                                .texture,
                             width: w,
                             height: h,
                             present_mode: pre,
-                            alpha_mode: state.default_selected_caps.alpha,
+                            alpha_mode: app
+                                .mirror
+                                .render
+                                .shared_rendering
+                                .default_selected_capabilities
+                                .alpha,
                             view_formats: vec![],
                             desired_maximum_frame_latency: 2,
                         };
 
-                        state.active_present = pre.clone();
-                        state.surface.configure(&state.device, &config);
+                        app.app_state.intricate_todo_refactor.active_present = pre.clone();
+                        app.systems
+                            .wgpu
+                            .surface
+                            .configure(&app.systems.wgpu.device, &config);
 
                         config
                     }
                     false => {
-                        additional_state.settings_state.preset =
-                            state.default_selected_caps.present.clone();
+                        app.configuration.preset = app
+                            .mirror
+                            .render
+                            .shared_rendering
+                            .default_selected_capabilities
+                            .present
+                            .clone();
 
                         let PhysicalSize {
                             width: w,
                             height: h,
-                        } = state.window.inner_size();
+                        } = app.systems.window.window.inner_size();
 
                         let config = wgpu::SurfaceConfiguration {
                             usage: wgpu::TextureUsages::COPY_SRC
                                 | wgpu::TextureUsages::RENDER_ATTACHMENT,
-                            format: state.default_selected_caps.texture,
+                            format: app
+                                .mirror
+                                .render
+                                .shared_rendering
+                                .default_selected_capabilities
+                                .texture,
                             width: w,
                             height: h,
-                            present_mode: state.default_selected_caps.present,
-                            alpha_mode: state.default_selected_caps.alpha,
+                            present_mode: app
+                                .mirror
+                                .render
+                                .shared_rendering
+                                .default_selected_capabilities
+                                .present,
+                            alpha_mode: app
+                                .mirror
+                                .render
+                                .shared_rendering
+                                .default_selected_capabilities
+                                .alpha,
                             view_formats: vec![],
                             desired_maximum_frame_latency: 2,
                         };
 
-                        state.active_present = state.default_selected_caps.present.clone();
-                        state.surface.configure(&state.device, &config);
+                        app.app_state.intricate_todo_refactor.active_present = app
+                            .mirror
+                            .render
+                            .shared_rendering
+                            .default_selected_capabilities
+                            .present
+                            .clone();
+
+                        app.systems
+                            .wgpu
+                            .surface
+                            .configure(&app.systems.wgpu.device, &config);
 
                         config
                     }
                 };
 
-                state.config = cfg;
+                app.systems.wgpu.config = cfg;
 
                 should_update = true;
 
-                additional_state.settings_state.should_define_new_preset = false;
+                app.configuration.should_define_new_preset = false;
             }
 
             if should_update {
-                additional_state
+                app.external
                     .channels
                     .gpu_sender_request
-                    .send(additional_state.settings_state.clone())
+                    .send(app.configuration.clone())
                     .unwrap();
             }
         }
         match event {
             WindowEvent::RedrawRequested => {
-                on_redraw(&mut state, &mut additional_state);
+                on_redraw(&mut app);
 
-                if state.should_shutdown {
-                    let _ = shutdown::shutdown(event_loop, &state, &additional_state);
+                if app.app_state.intricate_todo_refactor.should_shutdown {
+                    let _ = shutdown::shutdown(event_loop, &app);
 
                     return;
                 }
             }
             WindowEvent::CloseRequested => {
-                let _ = shutdown::shutdown(event_loop, &state, &additional_state);
+                let _ = shutdown::shutdown(event_loop, &app);
 
                 return;
             }
@@ -811,53 +992,53 @@ impl ApplicationHandler<()> for State3 {
                     // sure it matches the last known size the application detected. (As something
                     // is resizing the window when the focus is lost)
 
-                    state
+                    app.systems
                         .window
-                        .request_inner_size(additional_state.last_surface_size)
+                        .window
+                        .request_inner_size(app.app_state.last_iteration.last_surface_size)
                         .unwrap();
                 }
             }
 
-            _ => on_input_events(&event, &state, &mut additional_state),
+            _ => on_input_events(&mut app, &event),
         }
 
-        if additional_state.new_settings {
-            if let TitleBarDisplay::TitleBarVisible = &additional_state.settings_state.display_title
-            {
-                state.window.set_decorations(true);
+        if app.app_state.intricate_todo_refactor.new_settings {
+            if let TitleBarDisplay::TitleBarVisible = &app.configuration.display_title {
+                app.systems.window.window.set_decorations(true);
             } else {
-                state.window.set_decorations(false);
+                app.systems.window.window.set_decorations(false);
             }
 
-            match &additional_state.settings_state.window_interactions {
+            match &app.configuration.window_interactions {
                 crate::ui_state::WindowInteractions::Interactable => {
-                    let _ = state.window.set_cursor_hittest(true);
+                    let _ = app.systems.window.window.set_cursor_hittest(true);
                 }
                 crate::ui_state::WindowInteractions::PassThrough => {
-                    let _ = state.window.set_cursor_hittest(false);
+                    let _ = app.systems.window.window.set_cursor_hittest(false);
                 }
             }
 
-            let rt = state.rt.take().unwrap();
-            let render_pipeline_layout = state.pipeline_layout.take().unwrap();
+            let rt = app.systems.async_rt.take().unwrap();
+            let render_pipeline_layout = app
+                .mirror
+                .render
+                .mirror_rendering
+                .pipeline_layout
+                .take()
+                .unwrap();
 
-            if_shader_compilation_requested(
-                &rt,
-                &mut state,
-                &mut additional_state,
-                &render_pipeline_layout,
-            );
+            if_shader_compilation_requested(&mut app, &rt, &render_pipeline_layout);
 
-            state.rt = Some(rt);
-            state.pipeline_layout = Some(render_pipeline_layout);
+            app.systems.async_rt = Some(rt);
+            app.mirror.render.mirror_rendering.pipeline_layout = Some(render_pipeline_layout);
         }
 
-        remove_expired_mouse_events(&mut additional_state);
+        remove_expired_mouse_events(&mut app);
 
-        additional_state.new_settings = false;
+        app.app_state.intricate_todo_refactor.new_settings = false;
 
-        self.state = Some(state);
-        self.add = Some(additional_state);
+        self.temp_state = Some(app);
     }
 
     fn device_event(&mut self, _: &ActiveEventLoop, _: DeviceId, _: DeviceEvent) {}
@@ -894,9 +1075,8 @@ pub fn run_mirror_video_output_ui(channels: GpuChannelSide) -> Result<(), EventL
         channels: Arc::new(channels),
         window: None,
         counter: 0,
-        state: None,
-        add: None,
         about_to_wait_count: 0,
+        temp_state: None,
     };
 
     event_loop.run_app(&mut state3)

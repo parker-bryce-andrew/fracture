@@ -2,11 +2,13 @@ use super::{
     START_TIME, binary_images,
     input::utility_mouse::{first_in_range, found_remove_mouse_click, mouse_in_img_bounds},
     shutdown,
-    state::{AdditionalRenderingState, State},
     utility_texture::write_image_to_texture,
     window_cropping::start_crop_selection,
 };
-use crate::ui_state::{RemoveColors, TitleBarDisplay, UiState};
+use crate::{
+    gpu_mirror_display::state::Application,
+    ui_state::{RemoveColors, TitleBarDisplay, UiState},
+};
 use wgpu::{Extent3d, Queue, TextureDescriptor, TextureView, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
 
@@ -15,21 +17,21 @@ use winit::dpi::PhysicalSize;
 /// would likely define types like buttons and then the rendering system would handle rendering those buttons,
 /// but that's a lot more, and this application hopefully won't need a complex UI system.
 pub fn write_ui_texture_and_handle_ui_actions(
-    additional: &mut AdditionalRenderingState,
-    state: &mut State,
+    app: &mut Application,
     surface_size: PhysicalSize<u32>,
-    // wt: &EventLoopWindowTarget<()>,
 ) -> TextureView {
-    // let state: &State = state;
-    let ui_settings: &UiState = &additional.settings_state.clone();
-    // let crop_button_pressed: &bool = &additional.crop_button_pressed;
-    let _mouse_position @ (mouse_x, mouse_y): &(u32, u32) =
-        &additional.last_known_mouse_position.clone();
+    let ui_settings: &UiState = &&app.configuration.clone();
+    let _mouse_position @ (mouse_x, mouse_y): &(u32, u32) = &app
+        .app_state
+        .last_iteration
+        .last_known_mouse_position
+        .clone();
+
     let _surface_size @ PhysicalSize { width, height }: PhysicalSize<u32> = surface_size;
 
     let (mouse_x, mouse_y) = (*mouse_x as i32, *mouse_y as i32);
-    let mouse_position = &(mouse_x, mouse_y);
-    let texture = state.device.create_texture(&TextureDescriptor {
+    let mouse_position: &(i32, i32) = &(mouse_x, mouse_y);
+    let texture = app.systems.wgpu.device.create_texture(&TextureDescriptor {
         label: Some("overlays"),
         size: Extent3d {
             width,
@@ -47,8 +49,8 @@ pub fn write_ui_texture_and_handle_ui_actions(
     let mut found_hover = false;
 
     // The user interface is only displayed when the mouse is over the screen.
-    if additional.should_render_ui() {
-        if *&additional.crop_button_pressed {
+    if app.should_render_ui() {
+        if *&app.app_state.intricate_todo_refactor.crop_button_pressed {
             /*           let x: i32 = (width as i32 / 2)
                 - (binary_images::ICON_SELECT_SCREEN_AREA.dimensions.width / 2) as i32;
             let y: i32 = (height as i32 / 2)
@@ -60,7 +62,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
                 &binary_images::ICON_SELECT_SCREEN_AREA,
                 (x, y),
             ); */
-        } else if *&additional.mouse_over_screen {
+        } else if *&app.user_interaction.mouse_over_screen {
             // settings button
             {
                 let img_position = (
@@ -76,14 +78,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     &mut found_hover,
                 ) {
                     write_image_to_texture(
-                        state,
+                        app,
                         &texture,
                         &binary_images::ICON_GEAR_FILL,
                         img_position,
                     );
                 } else {
                     write_image_to_texture(
-                        state,
+                        app,
                         &texture,
                         &binary_images::ICON_GEAR_NO_FILL,
                         img_position,
@@ -91,11 +93,11 @@ pub fn write_ui_texture_and_handle_ui_actions(
                 }
 
                 if found_remove_mouse_click(
-                    &mut additional.mouse_clicks,
+                    &mut app.user_interaction.mouse_clicks,
                     &img_position,
                     &binary_images::ICON_GEAR_NO_FILL,
                 ) {
-                    let _ = additional.gtk_open_signal();
+                    let _ = app.gtk_open_signal();
                 }
             }
 
@@ -116,14 +118,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     &mut found_hover,
                 ) {
                     write_image_to_texture(
-                        state,
+                        app,
                         &texture,
                         &binary_images::ICON_PIP_FILL,
                         img_position,
                     );
                 } else {
                     write_image_to_texture(
-                        state,
+                        app,
                         &texture,
                         &binary_images::ICON_PIP_NO_FILL,
                         img_position,
@@ -131,16 +133,16 @@ pub fn write_ui_texture_and_handle_ui_actions(
                 }
 
                 if found_remove_mouse_click(
-                    &mut additional.mouse_clicks,
+                    &mut app.user_interaction.mouse_clicks,
                     &img_position,
                     &binary_images::ICON_PIP_NO_FILL,
                 ) {
-                    start_crop_selection(additional, state);
+                    start_crop_selection(app);
                 }
             }
         }
 
-        if *&additional.mouse_over_screen {
+        if *&app.user_interaction.mouse_over_screen {
             if let TitleBarDisplay::HiddenTitleBar = ui_settings.display_title {
                 // exit button
                 {
@@ -153,14 +155,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &mut found_hover,
                     ) {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_EXIT_FILL,
                             img_position,
                         );
                     } else {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_EXIT_NO_FILL,
                             img_position,
@@ -168,11 +170,11 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     }
 
                     if found_remove_mouse_click(
-                        &mut additional.mouse_clicks,
+                        &mut app.user_interaction.mouse_clicks,
                         &img_position,
                         &binary_images::ICON_EXIT_NO_FILL,
                     ) {
-                        shutdown::start_shutdown(state);
+                        shutdown::start_shutdown(app);
                     }
                 }
 
@@ -187,14 +189,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &mut found_hover,
                     ) {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_SQUARE_FILL,
                             img_position,
                         );
                     } else {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_SQUARE_NO_FILL,
                             img_position,
@@ -202,14 +204,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     }
 
                     if found_remove_mouse_click(
-                        &mut additional.mouse_clicks,
+                        &mut app.user_interaction.mouse_clicks,
                         &img_position,
                         &binary_images::ICON_SQUARE_NO_FILL,
                     ) {
-                        if !state.window.is_maximized() {
-                            state.window.set_maximized(true);
+                        if !app.systems.window.window.is_maximized() {
+                            app.systems.window.window.set_maximized(true);
                         } else {
-                            state.window.set_maximized(false);
+                            app.systems.window.window.set_maximized(false);
                         }
                     }
                 }
@@ -225,14 +227,14 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &mut found_hover,
                     ) {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_MINIMIZE_FILL,
                             img_position,
                         );
                     } else {
                         write_image_to_texture(
-                            state,
+                            app,
                             &texture,
                             &binary_images::ICON_MINIMIZE_NO_FILL,
                             img_position,
@@ -240,23 +242,23 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     }
 
                     if found_remove_mouse_click(
-                        &mut additional.mouse_clicks,
+                        &mut app.user_interaction.mouse_clicks,
                         &img_position,
                         &binary_images::ICON_MINIMIZE_NO_FILL,
                     ) {
-                        state.window.set_minimized(true);
+                        app.systems.window.window.set_minimized(true);
                     }
                 }
             }
 
-            if !*&additional.crop_button_pressed {
+            if !*&app.app_state.intricate_todo_refactor.crop_button_pressed {
                 if !found_hover {
                     if let Some(idx) = first_in_range(
-                        &mut additional.mouse_downs,
+                        &mut app.user_interaction.mouse_downs,
                         &((0, 0), ((width as i32), (height as i32))),
                     ) {
-                        let _ = state.window.drag_window();
-                        additional.mouse_downs.remove(idx);
+                        let _ = app.systems.window.window.drag_window();
+                        app.user_interaction.mouse_downs.remove(idx);
                     }
                 }
             }
