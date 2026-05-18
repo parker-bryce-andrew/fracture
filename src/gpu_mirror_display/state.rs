@@ -250,6 +250,8 @@ impl MirrorRenderer {
     pub fn should_render_ui(&self, app: &Application) -> bool {
         if app.user_interaction.mouse_over_screen
             || app.user_interaction.mouse_resize_state != ResizeInteractionsState::None
+            || app.app_state.intricate_todo_refactor.in_crop_selection
+            || app.app_state.intricate_todo_refactor.crop_button_pressed
         {
             true
         } else {

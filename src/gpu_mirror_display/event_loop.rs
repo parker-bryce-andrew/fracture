@@ -899,6 +899,9 @@ impl ApplicationHandler<()> for WinitHandler {
                         .window
                         .request_inner_size(app.app_state.last_iteration.last_surface_size)
                         .unwrap();
+
+                    // There's a focus check for mouse downs
+                    on_input_events(&mut app, &event);
                 }
             }
 

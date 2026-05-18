@@ -135,10 +135,24 @@ pub(crate) fn on_mouse_events(app: &mut Application, event: &WindowEvent) {
         WindowEvent::CursorEntered { device_id: _ } => {
             app.user_interaction.mouse_over_screen = true;
         }
+        WindowEvent::Focused(value) => match value {
+            true => {}
+            false => {
+                app.user_interaction.mouse_is_down = false;
+                app.app_state.intricate_todo_refactor.in_crop_selection = false;
+            }
+        },
         WindowEvent::CursorLeft { device_id: _ } => {
             app.user_interaction.mouse_over_screen = false;
             {
-                app.user_interaction.mouse_is_down = false;
+                // if there's a crop happening then keep rendering the selection
+                // until focus from the mouse is lost.
+                if !((app.app_state.intricate_todo_refactor.in_crop_selection
+                    || app.app_state.intricate_todo_refactor.crop_button_pressed)
+                    && app.systems.window.has_focus())
+                {
+                    app.user_interaction.mouse_is_down = false;
+                }
             }
         }
         _ => {}
@@ -154,6 +168,8 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
     let PhysicalSize { width, height } = app.systems.window.inner_size();
 
     let (x, y) = *&app.app_state.last_iteration.last_known_mouse_position;
+    let (x, y) = (x as i32, y as i32);
+    let (width, height) = (width as i32, height as i32);
 
     let resize = 10;
 
