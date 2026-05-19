@@ -2332,7 +2332,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 [[package]]
 name = "lamco-wgpu"
 version = "0.1.0"
-source = "git+https://github.com/parker-andrew-forks/wgpu-bridge.git?rev=72e0dfdec4aa75adfcd4383be4dcffafa26eaff8#72e0dfdec4aa75adfcd4383be4dcffafa26eaff8"
+source = "git+https://github.com/parker-andrew-forks/wgpu-bridge.git?rev=6159eaf26e9a1a0d78f45d843f90d361706c9620#6159eaf26e9a1a0d78f45d843f90d361706c9620"
 dependencies = [
  "ash",
  "bytemuck",
