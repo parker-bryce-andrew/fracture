@@ -14,7 +14,10 @@ use crate::{
 };
 use drm_fourcc::DrmFourcc;
 use gnome_window_calls::abstraction::{Window, WindowCache};
-use lamco_wgpu::smithay_reexports::{self, Dmabuf};
+use lamco_wgpu::{
+    bridge::SupportedDmaBufImport,
+    smithay_reexports::{self, Dmabuf},
+};
 use mmap::MapOption;
 use pipewire::{
     self as pw,
@@ -793,7 +796,14 @@ pub fn start_mirroring(
 
                 let mods: Vec<_> = v
                     .iter()
-                    .map(|v| v.modifiers.iter().map(|v| *v as i64))
+                    .map(|v| {
+                        v.modifiers.iter().map(|v| *v as i64).filter(|modifier| {
+                            v.image_create_mods.contains(&SupportedDmaBufImport {
+                                modifier: *modifier as u64,
+                                vk_format: v.vk_format,
+                            })
+                        })
+                    })
                     .flatten()
                     .collect();
 
