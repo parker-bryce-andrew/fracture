@@ -793,7 +793,12 @@ pub fn start_mirroring(
 
                 let mods: Vec<_> = v
                     .iter()
-                    .map(|v| v.modifiers.iter().map(|v| *v as i64))
+                    .map(|v| {
+                        v.modifier_props
+                            .iter()
+                            .filter(|prop| prop.plane_count == 1)
+                            .map(|m| m.modifier as i64)
+                    })
                     .flatten()
                     .collect();
 
