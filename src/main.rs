@@ -63,6 +63,18 @@ fn main() {
         }
     }
 
+    // I think Vulkan might be unstable for GTK, so I'm disabling it to see if it improves stability.
+    //
+    // "Currently, the GTK Vulkan backend doesn't do any error handling.
+    //  Every error is considered fatal. So it's expected that it crashes."
+    //
+    // https://gitlab.gnome.org/GNOME/gtk/-/work_items/7909
+    {
+        unsafe {
+            env::set_var("GDK_DISABLE", "vulkan");
+        }
+    }
+
     let (gpu, ui, dbus) = ApplicationChannelsCreator::channels();
     let (send_init_complete, init_complete) = std::sync::mpsc::channel::<()>();
 
