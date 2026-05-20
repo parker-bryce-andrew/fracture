@@ -72,6 +72,11 @@ fn main() {
     {
         unsafe {
             env::set_var("GDK_DISABLE", "vulkan");
+
+            // I'm just going to set the renderer to software based cairo because
+            // it seems even more stable, and that's all I care about for GTK. I'm
+            // not using GTK to render anything, it doesn't need to be complicated.
+            env::set_var("GSK_RENDERER", "cairo");
         }
     }
 
