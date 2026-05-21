@@ -174,7 +174,9 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         }
         
         if u32(in.clip_position.x) >= u32(sub_x) && u32(in.clip_position.x) <= max_x + 5 && u32(in.clip_position.y) >= u32(sub_y) && u32(in.clip_position.y) <= max_y + 5 {
-            color = cut_color;
+            var mirror = textureSample(t_diffuse, s_diffuse, in.tex_coords);
+
+            color = vec4(1.0 - mirror.r, 1.0 - mirror.g, 1.0 - mirror.b, 1.0);
 
             in_cut_region = true;
         }
