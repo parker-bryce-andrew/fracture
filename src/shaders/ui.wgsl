@@ -67,7 +67,6 @@ var<uniform> flags: UiRenderData;
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    var cut_color = vec4(1.0, 1.0, 1.0, 1.0);
     var color = vec4(0.0, 0.0, 0.0, 0.0);
 
     color.a = color.a - (1.0 - flags.transparency);
@@ -176,7 +175,23 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
         if u32(in.clip_position.x) >= u32(sub_x) && u32(in.clip_position.x) <= max_x + 5 && u32(in.clip_position.y) >= u32(sub_y) && u32(in.clip_position.y) <= max_y + 5 {
             var mirror = textureSample(t_diffuse, s_diffuse, in.tex_coords);
 
-            color = vec4(1.0 - mirror.r, 1.0 - mirror.g, 1.0 - mirror.b, 1.0);
+            var m_red = 1.0;
+            var m_green = 1.0;
+            var m_blue = 1.0;
+
+            if mirror.r > 0.5 {
+                m_red = 0.0;
+            }
+            
+            if mirror.b > 0.5 {
+                m_blue = 0.0;
+            }
+            
+            if mirror.g > 0.5 {
+                m_green = 0.0;
+            }
+
+            color = vec4(m_red, m_blue, m_green, 1.0);
 
             in_cut_region = true;
         }
