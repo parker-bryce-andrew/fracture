@@ -191,7 +191,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
                 m_green = 0.0;
             }
 
-            color = vec4(m_red, m_blue, m_green, 1.0);
+            color = vec4(m_red, m_green, m_blue, 1.0);
 
             in_cut_region = true;
         }
