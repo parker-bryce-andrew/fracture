@@ -394,6 +394,65 @@ pub fn start_mirroring(
 
     let run_scan_meta = run_frame_scan.clone();
 
+    let without_dma_modifiers = pipewire::spa::pod::Object {
+        type_: (pw::spa::utils::SpaTypes::ObjectParamFormat).as_raw(),
+        id: (pw::spa::param::ParamType::EnumFormat).as_raw(),
+        properties: [
+            (pipewire::spa::pod::Property {
+                key: (pw::spa::param::format::FormatProperties::MediaType).as_raw(),
+                flags: pipewire::spa::pod::PropertyFlags::empty(),
+                value: (pipewire::spa::pod::Value::Id(pipewire::spa::utils::Id(
+                    (pw::spa::param::format::MediaType::Video).as_raw(),
+                ))),
+            }),
+            (pipewire::spa::pod::Property {
+                key: (pw::spa::param::format::FormatProperties::MediaSubtype).as_raw(),
+                flags: pipewire::spa::pod::PropertyFlags::empty(),
+                value: (pipewire::spa::pod::Value::Id(pipewire::spa::utils::Id(
+                    (pw::spa::param::format::MediaSubtype::Raw).as_raw(),
+                ))),
+            }),
+            (pipewire::spa::pod::Property {
+                key: (pw::spa::param::format::FormatProperties::VideoFormat).as_raw(),
+                flags: pipewire::spa::pod::PropertyFlags::empty(),
+                value: (pipewire::spa::pod::Value::Choice(pipewire::spa::pod::ChoiceValue::Id(
+                    pipewire::spa::utils::Choice::<pipewire::spa::utils::Id>(
+                        pipewire::spa::utils::ChoiceFlags::empty(),
+                        pipewire::spa::utils::ChoiceEnum::Enum {
+                            default: pipewire::spa::utils::Id(
+                                (pw::spa::param::video::VideoFormat::BGRA).as_raw(),
+                            ),
+                            alternatives: [
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::BGRA).as_raw(),
+                                ),
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::RGBA).as_raw(),
+                                ),
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::RGB).as_raw(),
+                                ),
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::RGBA).as_raw(),
+                                ),
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::RGBx).as_raw(),
+                                ),
+                                pipewire::spa::utils::Id(
+                                    (pw::spa::param::video::VideoFormat::BGRx).as_raw(),
+                                ),
+                            ]
+                            .to_vec(),
+                        },
+                    ),
+                ))),
+            }),
+        ]
+        .to_vec(),
+    };
+
+    let state_change_pod_values = without_dma_modifiers.clone();
+
     let _listener = stream
         .add_local_listener_with_user_data(meta)
         .add_buffer(|_, _, pw| unsafe {
@@ -414,7 +473,39 @@ pub fn start_mirroring(
 
             let _ = remove_buffer_copy.lock().unwrap().remove(&buff_fd);
         })
-        .state_changed(|_, _, old, new| {
+        .state_changed(move |stream_ref, _, old, new| {
+            match stream_ref.state() {
+                v @ pipewire::stream::StreamState::Error(_) => {
+                    println!("{:#?}", v);
+
+                    println!("Attempting to downgrade DmaBuffers to CpuBuffers");
+
+                    // For now I'm just going to assume that errors are related
+                    // to not finding a way to negotiate the stream. The only
+                    // option available at the moment is to downgrade the stream
+                    // from DmaBuffers to CpuBuffers.
+                    //
+                    // I don't think errors should ever close the application. The user
+                    // might be running shaders that they want have continue running after
+                    // the stream ends.
+
+                    let temp = state_change_pod_values.clone();
+
+                    let temp: Vec<u8> = pw::spa::pod::serialize::PodSerializer::serialize(
+                        std::io::Cursor::new(Vec::new()),
+                        &pw::spa::pod::Value::Object(temp),
+                    )
+                    .unwrap()
+                    .0
+                    .into_inner();
+
+                    let mut parameters = [spa::pod::Pod::from_bytes(&temp).unwrap()];
+
+                    let _ = stream_ref.update_params(&mut parameters);
+                }
+                _ => {}
+            }
+
             println!("State changed: {:?} -> {:?}", old, new);
         })
         .param_changed(move |_, meta, id, param| {
@@ -825,62 +916,7 @@ pub fn start_mirroring(
         }
     };
 
-    let mut obj = pipewire::spa::pod::Object {
-        type_: (pw::spa::utils::SpaTypes::ObjectParamFormat).as_raw(),
-        id: (pw::spa::param::ParamType::EnumFormat).as_raw(),
-        properties: [
-            (pipewire::spa::pod::Property {
-                key: (pw::spa::param::format::FormatProperties::MediaType).as_raw(),
-                flags: pipewire::spa::pod::PropertyFlags::empty(),
-                value: (pipewire::spa::pod::Value::Id(pipewire::spa::utils::Id(
-                    (pw::spa::param::format::MediaType::Video).as_raw(),
-                ))),
-            }),
-            (pipewire::spa::pod::Property {
-                key: (pw::spa::param::format::FormatProperties::MediaSubtype).as_raw(),
-                flags: pipewire::spa::pod::PropertyFlags::empty(),
-                value: (pipewire::spa::pod::Value::Id(pipewire::spa::utils::Id(
-                    (pw::spa::param::format::MediaSubtype::Raw).as_raw(),
-                ))),
-            }),
-            (pipewire::spa::pod::Property {
-                key: (pw::spa::param::format::FormatProperties::VideoFormat).as_raw(),
-                flags: pipewire::spa::pod::PropertyFlags::empty(),
-                value: (pipewire::spa::pod::Value::Choice(pipewire::spa::pod::ChoiceValue::Id(
-                    pipewire::spa::utils::Choice::<pipewire::spa::utils::Id>(
-                        pipewire::spa::utils::ChoiceFlags::empty(),
-                        pipewire::spa::utils::ChoiceEnum::Enum {
-                            default: pipewire::spa::utils::Id(
-                                (pw::spa::param::video::VideoFormat::BGRA).as_raw(),
-                            ),
-                            alternatives: [
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::BGRA).as_raw(),
-                                ),
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::RGBA).as_raw(),
-                                ),
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::RGB).as_raw(),
-                                ),
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::RGBA).as_raw(),
-                                ),
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::RGBx).as_raw(),
-                                ),
-                                pipewire::spa::utils::Id(
-                                    (pw::spa::param::video::VideoFormat::BGRx).as_raw(),
-                                ),
-                            ]
-                            .to_vec(),
-                        },
-                    ),
-                ))),
-            }),
-        ]
-        .to_vec(),
-    };
+    let mut obj = without_dma_modifiers.clone();
 
     if let Some(mods) = mods {
         println!("DmaBuffer modifiers are specified.");
