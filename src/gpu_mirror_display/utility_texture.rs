@@ -193,7 +193,13 @@ pub(crate) fn position_image<'a, 'b>(
 
     let data = match &overlay.data {
         DmaOrCpuMemory::Dma => DmaOrCpuMemory::Dma,
-        DmaOrCpuMemory::Cpu(items) => DmaOrCpuMemory::Cpu(&items[skip_rows * bytes_per_row..]),
+        DmaOrCpuMemory::Cpu(items) => {
+            // it might not be that the math is wrong, but the window size shouldn't be
+            // checked while rendering to an exact surface size. (if the window size
+            // is reported as changing, and rendering is based on the window size,
+            // then it's possible to render more than the surface size which is an error)
+            DmaOrCpuMemory::Cpu(&items[(skip_rows * bytes_per_row).min(items.len() - 1)..])
+        }
     };
 
     let temp = PositioningData {
