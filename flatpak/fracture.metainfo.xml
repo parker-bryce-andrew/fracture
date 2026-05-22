@@ -38,6 +38,11 @@
     </p>
   </description>
   <releases>
+    <release type="stable" version="0.0.6" date="2026-05-22T00:00:00Z">
+      <description>
+        <p>crosshair selection, improved device support, and improved stability</p>
+      </description>
+    </release>
     <release type="stable" version="0.0.5" date="2026-05-18T00:00:00Z">
       <description>
         <p>choose present mode and issues resolved</p>

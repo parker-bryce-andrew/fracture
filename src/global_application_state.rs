@@ -12,7 +12,7 @@ pub static FRAME_TRANSFER: LazyLock<Mutex<Option<Arc<LastReported>>>> =
 
 pub const SAFE_MODE: &'static str = "SAFE_MODE";
 
-pub const VERSION: &'static str = "0.0.5";
+pub const VERSION: &'static str = "0.0.6";
 
 pub static FOUND_VERSION: LazyLock<String> = LazyLock::new(|| {
     if let Ok(v) = reqwest::blocking::get("https://fracture.systems/fracture/VERSION") {
