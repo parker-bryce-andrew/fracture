@@ -856,7 +856,12 @@ impl Application {
             after(self);
         }
 
-        self.systems.window.pre_present_notify();
+        // I think it's causing flickering which could be related to nvidia's locks
+        // but even with it, the FPS isn't constrained from this call. My rendering
+        // is confusing to interpret still because .present() takes different amounts
+        // of time depending on the present mode.
+        //
+        // self.systems.window.pre_present_notify();
 
         output.present();
 
