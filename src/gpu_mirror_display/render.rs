@@ -29,6 +29,10 @@ use wgpu::{BindGroupLayout, Extent3d, TextureUsages, TextureView, TextureViewDes
 use winit::dpi::PhysicalSize;
 
 pub fn on_redraw(mut app: &mut Application) {
+    if app.app_state.initialization_checks.track_fps {
+        app.metrics.fps_tracking.increment();
+    }
+
     app.systems.window.request_redraw();
 
     let data: Option<Arc<_>> = {

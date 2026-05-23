@@ -13,10 +13,10 @@ use crate::gpu_mirror_display::postprocessing_shaders::{
 };
 use crate::gpu_mirror_display::render::on_redraw;
 use crate::gpu_mirror_display::state::{
-    AppState, AppSystems, Application, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER, DmaStartupChecks,
-    EnumeratedState, ExternalControl, InitState, IntricateState, Mirror, MirrorRenderer,
-    MirrorRendering, PipewireController, PreviousIteration, SettingsGtk, SharedRender, UiRendering,
-    UserInteractionState, WgpuContainer,
+    AppState, AppStatistics, AppSystems, Application, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER,
+    DmaStartupChecks, EnumeratedState, ExternalControl, FpsTracker, InitState, IntricateState,
+    Mirror, MirrorRenderer, MirrorRendering, PipewireController, PreviousIteration, SettingsGtk,
+    SharedRender, UiRendering, UserInteractionState, WgpuContainer,
 };
 use crate::gpu_mirror_display::utility_texture::DmaOrCpuMemory;
 use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
@@ -26,9 +26,10 @@ use crate::ui_state::{
     UiState, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
 };
 use lamco_wgpu::SupportedFormat;
-use std::mem;
 use std::num::NonZero;
 use std::sync::Arc;
+use std::time::Duration;
+use std::{env, mem};
 use wgpu::util::DeviceExt;
 use wgpu::{BufferDescriptor, BufferUsages, Extent3d, Surface};
 use winit::application::ApplicationHandler;
@@ -558,6 +559,10 @@ impl ApplicationHandler<()> for WinitHandler {
                         dma_error_count: 0,
                     },
                     first_dma_sent: false,
+                    track_fps: match env::var("FPS_TRACKING") {
+                        Ok(_) => true,
+                        Err(_) => false,
+                    },
                 },
                 last_iteration: PreviousIteration {
                     last_fracture_display_origin: Default::default(),
@@ -659,6 +664,16 @@ impl ApplicationHandler<()> for WinitHandler {
                 settings_ui: SettingsGtk,
                 pipewire: PipewireController,
                 channels: Arc::new(channels),
+            },
+            metrics: AppStatistics {
+                fps_tracking: FpsTracker::new(Some(vec![
+                    Duration::from_secs(1),
+                    Duration::from_secs(15),
+                    Duration::from_secs(60),
+                    Duration::from_secs(60 * 5),
+                    Duration::from_secs(60 * 15),
+                    Duration::from_secs(60 * 60),
+                ])),
             },
         };
 

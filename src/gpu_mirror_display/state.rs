@@ -103,6 +103,7 @@ pub struct ExternalControl {
 pub struct InitState {
     pub dma_startup_checks: DmaStartupChecks,
     pub first_dma_sent: bool,
+    pub track_fps: bool,
 }
 
 pub struct PreviousIteration {
@@ -124,6 +125,128 @@ pub struct IntricateState {
     pub active_present: PresentMode,
     pub new_settings: bool,
 }
+
+#[derive(Debug, Clone)]
+pub struct FpsReport {
+    pub fps: f32,
+    pub interval: Duration,
+    pub draws: u32,
+}
+
+/// It's only used with an environmental varaible. It's not good.
+///
+/// todo: rewrite
+pub struct FpsTracker {
+    start_time: SystemTime,
+    /// For each draw, it takes 12 bytes of memory.
+    ///
+    /// 12 bytes * 120 FPS * 86,400 (24 hours) =  124,416,000 bytes
+    ///
+    /// 1 MB ~= 1 million bytes
+    ///
+    /// In 24 hours it takes 125 MB of memory.
+    draws: Vec<SystemTime>,
+    tracking: Vec<Duration>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FpsTrackerReport {
+    #[allow(unused)]
+    time: SystemTime,
+    #[allow(unused)]
+    timestamps: usize,
+    #[allow(unused)]
+    report: Vec<FpsReport>,
+}
+
+impl FpsTracker {
+    pub fn new(track: Option<Vec<Duration>>) -> FpsTracker {
+        let mut tracking;
+
+        if let Some(v) = track {
+            tracking = v;
+            tracking.sort();
+        } else {
+            tracking = vec![];
+        }
+
+        FpsTracker {
+            start_time: SystemTime::now(),
+            draws: vec![],
+            tracking,
+        }
+    }
+
+    pub fn increment(&mut self) {
+        self.draws.push(SystemTime::now());
+    }
+
+    pub fn add_tracker(&mut self, interval: Duration) {
+        self.tracking.push(interval);
+        self.tracking.sort();
+    }
+
+    pub fn remove_tracker(&mut self, interval: Duration) {
+        match self.tracking.binary_search_by_key(&interval, |idk| *idk) {
+            Ok(idx) => {
+                self.tracking.remove(idx);
+            }
+            Err(_) => {}
+        }
+    }
+
+    pub fn fps(&self, interval: Duration) -> FpsReport {
+        let res = self
+            .draws
+            .binary_search_by(|a| match a.elapsed().unwrap().cmp(&interval) {
+                std::cmp::Ordering::Less => std::cmp::Ordering::Greater,
+                std::cmp::Ordering::Equal => std::cmp::Ordering::Equal,
+                std::cmp::Ordering::Greater => std::cmp::Ordering::Less,
+            });
+
+        let idx = match res {
+            Ok(idx) => idx,
+            Err(idx) => idx,
+        };
+
+        let mut duration = interval;
+
+        if idx == 0 {
+            duration = self.start_time.elapsed().unwrap();
+        }
+
+        let calls = (self.draws.len() - idx) as u32;
+
+        FpsReport {
+            fps: calls as f32 / duration.as_secs_f32(),
+            interval: duration,
+            draws: calls,
+        }
+    }
+
+    pub fn report(&self) -> FpsTrackerReport {
+        let mut temp = vec![];
+
+        for v in &self.tracking {
+            if v <= &self.start_time.elapsed().unwrap() {
+                temp.push(self.fps(v.clone()));
+            }
+        }
+
+        temp.push(self.fps(self.start_time.elapsed().unwrap()));
+
+        FpsTrackerReport {
+            time: SystemTime::now(),
+            timestamps: self.draws.len(),
+            report: temp,
+        }
+    }
+}
+
+pub struct AppStatistics {
+    pub fps_tracking: FpsTracker,
+}
+
 pub struct AppState {
     pub cropped: Option<CroppedArea>,
     pub initialization_checks: InitState,
@@ -138,6 +261,7 @@ pub struct Application {
     pub user_interaction: UserInteractionState,
     pub mirror: Mirror,
     pub configuration: UiState,
+    pub metrics: AppStatistics,
     pub systems: AppSystems,
     pub external: ExternalControl,
 }
