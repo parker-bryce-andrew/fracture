@@ -852,6 +852,8 @@ impl Application {
             after(self);
         }
 
+        self.systems.window.pre_present_notify();
+
         output.present();
 
         Ok(())
