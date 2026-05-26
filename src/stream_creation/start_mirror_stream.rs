@@ -1,7 +1,9 @@
 use crate::{
     global_application_state::{
-        CpuFrame, DmaFrame, FRAME_TRANSFER, FrameData, FrameLayout, LastReported, SAFE_MODE,
+        CpuFrame, DmaFrame, FPS_TRACKING, FRAME_TRANSFER, FrameData, FrameLayout, LastReported,
+        SAFE_MODE,
     },
+    gpu_mirror_display::state::{FpsTracker, FpsTrackerOrigin},
     stream_creation::{
         pipewire_dbus::{
             CursorMode, FreeDesktopPipewireWindowStream, GnomePipewireWindowStream, PipewireStream,
@@ -24,10 +26,8 @@ use pw::{properties::properties, spa};
 use smithay::reexports::ash::vk::Format;
 use std::{
     collections::HashMap,
-    os::{
-        fd::{FromRawFd, OwnedFd},
-        raw::c_int,
-    },
+    env,
+    os::raw::c_int,
     sync::{Arc, Mutex, mpsc},
     time::{Duration, SystemTime},
 };
@@ -451,7 +451,19 @@ pub fn start_mirroring(
         .to_vec(),
     };
 
+    let should_track_fps = env::var(FPS_TRACKING).is_ok();
     let state_change_pod_values = without_dma_modifiers.clone();
+    let mut fps_tracker = FpsTracker::new(
+        Some(FpsTrackerOrigin::Pipewire),
+        Some(vec![
+            Duration::from_secs(1),
+            Duration::from_secs(15),
+            Duration::from_secs(60),
+            Duration::from_secs(60 * 5),
+            Duration::from_secs(60 * 15),
+            Duration::from_secs(60 * 60),
+        ]),
+    );
 
     let _listener = stream
         .add_local_listener_with_user_data(meta)
@@ -563,6 +575,15 @@ pub fn start_mirroring(
             }
         })
         .process(move |stream, meta| {
+            if should_track_fps {
+                fps_tracker.increment();
+
+                if let Ok(_) = dbus_channels.fps_request.try_recv() {
+                    println!("------------------------------------------------------------------");
+                    println!("{:?}", fps_tracker.report());
+                }
+            }
+
             let new_wh = Some((meta.format.size().width, meta.format.size().height));
             let old_wh = last_format_dimensions;
 

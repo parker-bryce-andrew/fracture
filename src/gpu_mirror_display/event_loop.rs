@@ -1,5 +1,5 @@
 use crate::application_channel_creator::GpuChannelSide;
-use crate::global_application_state::{AVAILABLE_PRESETS, SAFE_MODE};
+use crate::global_application_state::{AVAILABLE_PRESETS, FPS_TRACKING, SAFE_MODE};
 use crate::gpu_mirror_display::defaults::{APPLICATION_NAME, CROP_COLOR, PRESENT_PREFERENCES};
 use crate::gpu_mirror_display::input::events_mouse::ResizeInteractionsState;
 use crate::gpu_mirror_display::input::on_input_events;
@@ -14,9 +14,9 @@ use crate::gpu_mirror_display::postprocessing_shaders::{
 use crate::gpu_mirror_display::render::on_redraw;
 use crate::gpu_mirror_display::state::{
     AppState, AppStatistics, AppSystems, Application, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER,
-    DmaStartupChecks, EnumeratedState, ExternalControl, FpsTracker, InitState, IntricateState,
-    Mirror, MirrorRenderer, MirrorRendering, PipewireController, PreviousIteration, SettingsGtk,
-    SharedRender, UiRendering, UserInteractionState, WgpuContainer,
+    DmaStartupChecks, EnumeratedState, ExternalControl, FpsTracker, FpsTrackerOrigin, InitState,
+    IntricateState, Mirror, MirrorRenderer, MirrorRendering, PipewireController, PreviousIteration,
+    SettingsGtk, SharedRender, UiRendering, UserInteractionState, WgpuContainer,
 };
 use crate::gpu_mirror_display::utility_texture::DmaOrCpuMemory;
 use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
@@ -559,7 +559,7 @@ impl ApplicationHandler<()> for WinitHandler {
                         dma_error_count: 0,
                     },
                     first_dma_sent: false,
-                    track_fps: match env::var("FPS_TRACKING") {
+                    track_fps: match env::var(FPS_TRACKING) {
                         Ok(_) => true,
                         Err(_) => false,
                     },
@@ -666,14 +666,17 @@ impl ApplicationHandler<()> for WinitHandler {
                 channels: Arc::new(channels),
             },
             metrics: AppStatistics {
-                fps_tracking: FpsTracker::new(Some(vec![
-                    Duration::from_secs(1),
-                    Duration::from_secs(15),
-                    Duration::from_secs(60),
-                    Duration::from_secs(60 * 5),
-                    Duration::from_secs(60 * 15),
-                    Duration::from_secs(60 * 60),
-                ])),
+                fps_tracking: FpsTracker::new(
+                    Some(FpsTrackerOrigin::WebGpu),
+                    Some(vec![
+                        Duration::from_secs(1),
+                        Duration::from_secs(15),
+                        Duration::from_secs(60),
+                        Duration::from_secs(60 * 5),
+                        Duration::from_secs(60 * 15),
+                        Duration::from_secs(60 * 60),
+                    ]),
+                ),
             },
         };
 

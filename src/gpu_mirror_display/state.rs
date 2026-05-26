@@ -133,10 +133,17 @@ pub struct FpsReport {
     pub draws: u32,
 }
 
+#[derive(Clone, Debug)]
+pub enum FpsTrackerOrigin {
+    WebGpu,
+    Pipewire,
+}
+
 /// It's only used with an environmental varaible. It's not good.
 ///
 /// todo: rewrite
 pub struct FpsTracker {
+    origin: Option<FpsTrackerOrigin>,
     start_time: SystemTime,
     /// For each draw, it takes 12 bytes of memory.
     ///
@@ -152,6 +159,8 @@ pub struct FpsTracker {
 #[derive(Debug, Clone)]
 pub struct FpsTrackerReport {
     #[allow(unused)]
+    origin: Option<FpsTrackerOrigin>,
+    #[allow(unused)]
     time: SystemTime,
     #[allow(unused)]
     timestamps: usize,
@@ -160,7 +169,7 @@ pub struct FpsTrackerReport {
 }
 
 impl FpsTracker {
-    pub fn new(track: Option<Vec<Duration>>) -> FpsTracker {
+    pub fn new(origin: Option<FpsTrackerOrigin>, track: Option<Vec<Duration>>) -> FpsTracker {
         let mut tracking;
 
         if let Some(v) = track {
@@ -174,6 +183,7 @@ impl FpsTracker {
             start_time: SystemTime::now(),
             draws: vec![],
             tracking,
+            origin: origin,
         }
     }
 
@@ -239,6 +249,7 @@ impl FpsTracker {
             time: SystemTime::now(),
             timestamps: self.draws.len(),
             report: temp,
+            origin: self.origin.clone(),
         }
     }
 }

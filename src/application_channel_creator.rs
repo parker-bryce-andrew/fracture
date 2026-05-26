@@ -26,6 +26,7 @@ pub struct GpuChannelSide {
     pub dbus_shutdown_conf: std::sync::mpsc::Receiver<()>,
     pub stream_start_check_mirror_gpu: std::sync::mpsc::Receiver<bool>,
     pub kill_gtk: std::sync::mpsc::Sender<()>,
+    pub request_pipewire_fps: std::sync::mpsc::Sender<()>,
 }
 
 pub struct UiChannelSide {
@@ -47,6 +48,7 @@ pub struct DbusSide {
     pub shutdown_confirmed: std::sync::mpsc::Sender<()>,
     pub stream_start_check_mirror_gpu: std::sync::mpsc::Sender<bool>,
     pub stream_start_check_settings_ui: std::sync::mpsc::Sender<bool>,
+    pub fps_request: std::sync::mpsc::Receiver<()>,
 }
 
 impl ApplicationChannelsCreator {
@@ -65,6 +67,7 @@ impl ApplicationChannelsCreator {
         let (s12, r12) = std::sync::mpsc::channel::<_>();
         let (s13, r13) = std::sync::mpsc::channel::<_>();
         let (s14, r14) = std::sync::mpsc::channel::<_>();
+        let (s15, r15) = std::sync::mpsc::channel::<_>();
 
         (
             GpuChannelSide {
@@ -81,6 +84,7 @@ impl ApplicationChannelsCreator {
                 dbus_shutdown_conf: r11,
                 stream_start_check_mirror_gpu: r12,
                 kill_gtk: s14,
+                request_pipewire_fps: s15,
             },
             UiChannelSide {
                 start_signal_receiver: r1,
@@ -100,6 +104,7 @@ impl ApplicationChannelsCreator {
                 shutdown_confirmed: s11,
                 stream_start_check_mirror_gpu: s12,
                 stream_start_check_settings_ui: s13,
+                fps_request: r15,
             },
         )
     }
