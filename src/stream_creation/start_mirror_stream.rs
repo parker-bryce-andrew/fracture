@@ -627,22 +627,45 @@ pub fn start_mirroring(
                                     let mut stride = 0;
                                     let mut size = 0;
 
-                                    buffer_data.iter().enumerate().for_each(|(idx, plane)| {
-                                        let fd: c_int = plane.as_raw().fd as c_int;
-                                        let fd: std::os::fd::RawFd = fd;
-                                        let fd: std::os::fd::OwnedFd =
-                                            unsafe { OwnedFd::from_raw_fd(fd) };
+                                    let buffer_data: Vec<_> = buffer_data
+                                        .iter()
+                                        .enumerate()
+                                        .map(|(idx, plane)| {
+                                            let fd: c_int = plane.as_raw().fd as c_int;
+                                            let fd: std::os::fd::RawFd = fd;
+                                            let borrowed =
+                                                unsafe { std::os::fd::BorrowedFd::borrow_raw(fd) };
+                                            let fd: Result<_, _> = borrowed.try_clone_to_owned();
 
-                                        stride = plane.chunk().stride();
-                                        size = plane.chunk().size();
+                                            if fd.is_err() {
+                                                return None;
+                                            }
 
-                                        builder.add_plane(
-                                            fd,
-                                            idx as u32,
-                                            plane.chunk().offset() as u32,
-                                            plane.chunk().stride() as u32,
-                                        );
-                                    });
+                                            let fd = fd.unwrap();
+
+                                            stride = plane.chunk().stride();
+                                            size = plane.chunk().size();
+
+                                            Some((
+                                                fd,
+                                                idx as u32,
+                                                plane.chunk().offset() as u32,
+                                                plane.chunk().stride() as u32,
+                                            ))
+                                        })
+                                        .collect();
+
+                                    if buffer_data.iter().any(|v| v.is_none()) {
+                                        println!("error importing dma buffer");
+
+                                        return;
+                                    }
+
+                                    buffer_data.into_iter().map(|v| v.unwrap()).for_each(
+                                        |(fd, idx, offset, stride)| {
+                                            builder.add_plane(fd, idx, offset, stride);
+                                        },
+                                    );
 
                                     let result: Option<smithay_reexports::Dmabuf> = builder.build();
 
