@@ -18,7 +18,7 @@ pub(crate) fn on_keyboard_events(app: &mut Application, event: &WindowEvent) {
                 KeyCode::Escape => {
                     // todo: Should something happen on escape?
                 }
-                KeyCode::KeyR => match event.state {
+                KeyCode::KeyF => match event.state {
                     winit::event::ElementState::Released => {
                         if app.app_state.initialization_checks.track_fps {
                             println!(
