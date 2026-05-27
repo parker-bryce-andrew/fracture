@@ -1469,8 +1469,9 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             .buffer(&{
                 let temp = state;
                 let temp = temp.lossy_into_set_ui();
+                let create_version: CreateUiState = temp.into();
 
-                let text = serde_json::to_string_pretty(&temp).unwrap();
+                let text = serde_json::to_string_pretty(&create_version).unwrap();
 
                 gtk::TextBuffer::builder().text(&text).build()
             })
@@ -1535,12 +1536,13 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             let data: GString = buff.text(&buff.start_iter(), &buff.end_iter(), false);
             let after: String = format!("{}", data);
 
-            let parse_result = serde_json::from_str::<SetUiState>(&after);
+            let parse_result = serde_json::from_str::<CreateUiState>(&after);
 
             if let Ok(parsed) = parse_result {
                 import_dia.close();
 
-                let new = parsed.build_new_full_settings_state();
+                let set: SetUiState = parsed.into();
+                let new = set.build_new_full_settings_state();
                 *v2.borrow_mut().update() = new;
             } else {
                 let err_text = parse_result.unwrap_err();

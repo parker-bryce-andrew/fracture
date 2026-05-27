@@ -1,4 +1,4 @@
-use crate::global_application_state::SAFE_MODE;
+use crate::global_application_state::{SAFE_MODE, load_profiles};
 use crate::gpu_mirror_display::defaults::FP_ID;
 use application_channel_creator::ApplicationChannelsCreator;
 use ashpd::desktop::notification::{NotificationProxy, Priority};
@@ -44,6 +44,11 @@ pub fn send_notifcation(title: &str, msg: &str) -> ashpd::Result<()> {
 }
 
 fn main() {
+    match load_profiles() {
+        Ok(val) => println!("{:#?}", val),
+        Err(_) => {}
+    }
+
     // This is a hack until I fix it... For my device, the GDK_BACKEND is set to x11 and I don't know why...
     //
     // If the GDK_BACKEND needs to be set then set the FORCE_OVERRIDE_GDK value in the environment and it won't be changed.

@@ -1,11 +1,15 @@
+use crate::{
+    gpu_mirror_display::defaults::{FP_ID, PRESENT_PREFERENCES},
+    ui_state::LoadedProfiles,
+};
 use detect_desktop_environment::DesktopEnvironment;
 use lamco_wgpu::smithay_reexports::Dmabuf;
 use std::{
+    io::{Read, Write},
+    path::PathBuf,
     sync::{Arc, LazyLock, Mutex},
     time::SystemTime,
 };
-
-use crate::gpu_mirror_display::defaults::PRESENT_PREFERENCES;
 
 pub static FRAME_TRANSFER: LazyLock<Mutex<Option<Arc<LastReported>>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -14,6 +18,82 @@ pub const SAFE_MODE: &'static str = "SAFE_MODE";
 pub const FPS_TRACKING: &'static str = "FPS_TRACKING";
 
 pub const VERSION: &'static str = "0.0.6";
+
+pub const CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
+    let mut path =
+        std::env::home_dir().unwrap_or(std::env::current_dir().unwrap_or("/home".into()));
+
+    path.push(".var/app");
+    path.push(FP_ID);
+    path.push("config/fracture");
+
+    path
+});
+
+pub const FRACTURE_PROFILE_FILENAME: &'static str = "profiles.json";
+
+
+
+#[derive(Debug)]
+pub enum ProfileLoadingErr {
+    DirectoryCreation(std::io::Error),
+    ReadErr(std::io::Error),
+    InvalidFormat(serde_json::Error),
+    CreateNew(std::io::Error),
+    WriteErr(std::io::Error),
+}
+
+pub fn load_profiles() -> Result<LoadedProfiles, ProfileLoadingErr> {
+    let mut path = CONFIG_FOLDER.clone();
+
+    let res = std::fs::create_dir_all(&path);
+
+    let Ok(()) = res else {
+        return Err(ProfileLoadingErr::DirectoryCreation(res.unwrap_err()));
+    };
+
+    path.push(FRACTURE_PROFILE_FILENAME);
+
+    match std::fs::File::open(&path) {
+        Ok(mut file) => {
+            let mut data = String::new();
+
+            let res: Result<usize, std::io::Error> = file.read_to_string(&mut data);
+
+            let Ok(_) = res else {
+                return Err(ProfileLoadingErr::ReadErr(res.unwrap_err()));
+            };
+
+            let res: Result<LoadedProfiles, serde_json::Error> = serde_json::from_str(&data);
+
+            let Ok(val) = res else {
+                return Err(ProfileLoadingErr::InvalidFormat(res.unwrap_err()));
+            };
+
+            return Ok(val);
+        }
+
+        Err(_) => {
+            let res: Result<std::fs::File, std::io::Error> = std::fs::File::create_new(&path);
+
+            let Ok(mut file) = res else {
+                return Err(ProfileLoadingErr::CreateNew(res.unwrap_err()));
+            };
+
+            let cfg = LoadedProfiles::default();
+
+            let contents = serde_json::to_string_pretty(&cfg).unwrap();
+
+            let res: Result<(), std::io::Error> = file.write_all(&contents.as_bytes());
+
+            let Ok(_) = res else {
+                return Err(ProfileLoadingErr::WriteErr(res.unwrap_err()));
+            };
+
+            return Ok(cfg);
+        }
+    }
+}
 
 pub static FOUND_VERSION: LazyLock<String> = LazyLock::new(|| {
     if let Ok(v) = reqwest::blocking::get("https://fracture.systems/fracture/VERSION") {
@@ -41,28 +121,6 @@ pub static DESKTOP_ENV_IS_GNOME: LazyLock<bool> =
 
 pub static AVAILABLE_PRESETS: LazyLock<Mutex<Vec<wgpu::PresentMode>>> =
     LazyLock::new(|| Mutex::new(PRESENT_PREFERENCES.to_vec()));
-
-/*
-
-// todo: Add saved defaults.
-
-static DEFUALT_SETTINGS_FILE_PATH: &'static str = "~/.config/default.json";
-
-pub static DEFAULT_SETTINGS: LazyLock<SetUiState> = LazyLock::new(|| {
-    if let Ok(mut file) = std::fs::File::open(DEFUALT_SETTINGS_FILE_PATH) {
-        let mut text = String::new();
-
-        if let Ok(_) = file.read_to_string(&mut text) {
-            let state: Result<SetUiState, _> = serde_json::de::from_str(&text);
-
-            if let Ok(state) = state {
-                return state;
-            }
-        }
-    }
-
-    CreateUiState::default().into()
-}); */
 
 #[derive(Clone, Debug)]
 pub struct FrameLayout {
