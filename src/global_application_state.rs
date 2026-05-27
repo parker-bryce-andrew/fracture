@@ -32,8 +32,6 @@ pub const CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
 
 pub const FRACTURE_PROFILE_FILENAME: &'static str = "profiles.json";
 
-
-
 #[derive(Debug)]
 pub enum ProfileLoadingErr {
     DirectoryCreation(std::io::Error),
@@ -41,6 +39,14 @@ pub enum ProfileLoadingErr {
     InvalidFormat(serde_json::Error),
     CreateNew(std::io::Error),
     WriteErr(std::io::Error),
+}
+
+pub fn profiles_filepath() -> PathBuf {
+    let mut path = CONFIG_FOLDER.clone();
+
+    path.push(FRACTURE_PROFILE_FILENAME);
+
+    path
 }
 
 pub fn load_profiles() -> Result<LoadedProfiles, ProfileLoadingErr> {
@@ -52,7 +58,7 @@ pub fn load_profiles() -> Result<LoadedProfiles, ProfileLoadingErr> {
         return Err(ProfileLoadingErr::DirectoryCreation(res.unwrap_err()));
     };
 
-    path.push(FRACTURE_PROFILE_FILENAME);
+    path = profiles_filepath();
 
     match std::fs::File::open(&path) {
         Ok(mut file) => {

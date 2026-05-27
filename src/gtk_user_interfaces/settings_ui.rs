@@ -1,7 +1,8 @@
 use crate::{
     application_channel_creator::UiChannelSide,
     global_application_state::{
-        AVAILABLE_PRESETS, FOUND_VERSION, ProfileLoadingErr, VERSION, load_profiles,
+        AVAILABLE_PRESETS, CONFIG_FOLDER, FOUND_VERSION, ProfileLoadingErr, VERSION, load_profiles,
+        profiles_filepath,
     },
     gpu_mirror_display::postprocessing_shaders::DEFAULT_POSTPROCESSOR,
     shaders::{
@@ -1723,13 +1724,35 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         Err(text) => {
             let text: Result<(), _> = Err(text);
 
-            let debug = format!("{:#?}", text);
+            let msg = "The file for profiles failed to be loaded.";
+
+            // profile_box.append(&msg);
+
+            let where_is = profiles_filepath();
+
+            let after = "It's located at";
+
+            let after2 = "If you'd like, we can try deleting it?";
+
+            let reload = gtk::Button::builder().label("Try reloading").build();
+            let delete = gtk::Button::builder().label("Delete it").build();
+
+            let debug = format!(
+                "{msg}\r\n\r\n{:#?}\r\n\r\n{after}\r\n\r\n{where_is:#?}\r\n\r\n{after2}",
+                text
+            );
 
             let text_buff = TextBuffer::builder().text(debug).build();
             err_text_box.set_buffer(Some(&text_buff));
             err_text_box.set_visible(true);
 
+            active_profile_out.set_visible(false);
+            profile_box_r0.set_visible(false);
+
             err_text_box.add_css_class("err");
+
+            profile_box.append(&reload);
+            profile_box.append(&delete);
         }
     }
 
