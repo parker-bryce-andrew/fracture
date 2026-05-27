@@ -1,4 +1,4 @@
-use crate::global_application_state::{SAFE_MODE, load_profiles};
+use crate::global_application_state::SAFE_MODE;
 use crate::gpu_mirror_display::defaults::FP_ID;
 use application_channel_creator::ApplicationChannelsCreator;
 use ashpd::desktop::notification::{NotificationProxy, Priority};
