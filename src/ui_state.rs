@@ -473,7 +473,7 @@ impl Default for Profile {
         cfg.present = None;
 
         Self {
-            name: Some("Default".into()),
+            name: Some("New Profile".into()),
             config: cfg,
         }
     }

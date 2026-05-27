@@ -1,6 +1,8 @@
 use crate::{
     application_channel_creator::UiChannelSide,
-    global_application_state::{AVAILABLE_PRESETS, FOUND_VERSION, VERSION},
+    global_application_state::{
+        AVAILABLE_PRESETS, FOUND_VERSION, ProfileLoadingErr, VERSION, load_profiles,
+    },
     gpu_mirror_display::postprocessing_shaders::DEFAULT_POSTPROCESSOR,
     shaders::{
         SHADER_COLOR_GRADIENT, SHADER_FLIP_HORIZONTAL, SHADER_FLIP_VERTICAL, SHADER_INVERT_COLORS,
@@ -9,7 +11,7 @@ use crate::{
     ui_state::*,
 };
 use gtk4::{
-    self as gtk, Adjustment, ApplicationWindow, Button, TextBuffer, ToggleButton,
+    self as gtk, Adjustment, ApplicationWindow, Button, EntryBuffer, TextBuffer, ToggleButton,
     gdk::{Display, RGBA},
     gio::ApplicationFlags,
     glib::{self, ControlFlow, GString},
@@ -1562,6 +1564,176 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
     export_import_display.append(&randomizer);
 
     base.append(&export_import_display);
+
+    base.append(&gtk::Label::new("Profiles".into()));
+
+    let profile_box = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Vertical)
+        .build();
+
+    let profile_box_r0 = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Horizontal)
+        .build();
+
+    let active_profile_out = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Vertical)
+        .build();
+
+    let active_profile = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .margin_bottom(10)
+        .margin_end(10)
+        .margin_start(10)
+        .margin_top(10)
+        .orientation(gtk4::Orientation::Vertical)
+        .build();
+
+    active_profile_out.add_css_class("ok");
+
+    let profile_box_r1 = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        // .halign(gtk4::Align::Center)
+        .orientation(gtk4::Orientation::Horizontal)
+        .build();
+    // let profile_box_r2 = gtk::Box::builder()
+    //     .valign(gtk4::Align::Start)
+    //     .spacing(10)
+    //     .orientation(gtk4::Orientation::Horizontal)
+    //     .build();
+    let profile_box_r3 = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Horizontal)
+        .build();
+
+    profile_box.append(&profile_box_r0);
+
+    active_profile_out.append(&active_profile);
+
+    profile_box.append(&active_profile_out);
+    active_profile.append(&profile_box_r1);
+    // profile_box.append(&profile_box_r2);
+    active_profile.append(&profile_box_r3);
+
+    let err_text_box = gtk::TextView::builder().visible(false).build();
+
+    err_text_box.set_width_request(1920 / 3);
+    // err_text_box.set_height_request(1080 / 2);
+
+    profile_box.append(&err_text_box);
+
+    let profiles_loaded = load_profiles();
+
+    match profiles_loaded {
+        Ok(profiles) => {
+            let defined_profiles: Vec<(usize, Profile)> = profiles
+                .list()
+                .iter()
+                .map(|v| v.clone())
+                .enumerate()
+                .collect();
+
+            let profile_names: Vec<(usize, String)> = profiles
+                .list()
+                .iter()
+                .map(|v| {
+                    v.clone()
+                        .name
+                        .clone()
+                        .map(|v| v.to_string())
+                        .unwrap_or("New Profile".into())
+                })
+                .enumerate()
+                .collect();
+
+            let temp: Vec<&str> = profile_names.iter().map(|v| v.1.as_str()).collect();
+            let temp2 = gtk::DropDown::from_strings(&temp);
+
+            let new = gtk::Button::builder().label("New").build();
+            profile_box_r0.append(&new);
+            profile_box_r0.append(&temp2);
+
+            profile_box_r1.append(&gtk::Label::new("Name".into()));
+
+            let field_val = EntryBuffer::builder().text(temp[0]).build();
+
+            let entry = gtk::Entry::builder()
+                .name("Name")
+                .buffer(&field_val)
+                .build();
+
+            profile_box_r1.append(&entry);
+
+            let field_val = EntryBuffer::builder().text("0").build();
+
+            let entry = gtk::Entry::builder()
+                .name("Order")
+                // .focusable(false)
+                // .editing_canceled(true)
+                // .can_target(false)
+                .sensitive(false)
+                .max_width_chars(3)
+                // .editable(false)
+                .buffer(&field_val)
+                .build();
+
+            profile_box_r1.append(&gtk::Label::new("Order".into()));
+            profile_box_r1.append(&entry);
+
+            let up = gtk::Button::builder().label("+").build();
+            let down = gtk::Button::builder().label("-").build();
+
+            profile_box_r1.append(&down);
+            profile_box_r1.append(&up);
+
+            let def = gtk::Button::builder().label("Make default").build();
+            let load = gtk::Button::builder().label("Load").build();
+            let save = gtk::Button::builder().label("Save").build();
+
+            let rm = gtk::Button::builder().label("Delete").build();
+
+            profile_box_r3.append(&load);
+            profile_box_r3.append(&save);
+            profile_box_r3.append(&def);
+            profile_box_r3.append(&rm);
+
+            let v2 = v.clone();
+
+            temp2.connect_selected_item_notify(move |v| {
+                let temp = v.selected();
+
+                let selection: &Profile = &defined_profiles[temp as usize].1;
+
+                let ui: UiState = selection.config.clone().into();
+
+                let mut temp = v2.borrow_mut();
+                let temp = temp.update();
+
+                *temp = ui;
+            });
+        }
+        Err(text) => {
+            let text: Result<(), _> = Err(text);
+
+            let debug = format!("{:#?}", text);
+
+            let text_buff = TextBuffer::builder().text(debug).build();
+            err_text_box.set_buffer(Some(&text_buff));
+            err_text_box.set_visible(true);
+
+            err_text_box.add_css_class("err");
+        }
+    }
+
+    base.append(&profile_box);
 
     base.set_margin_start(10);
     base.set_margin_top(10);
