@@ -24,6 +24,7 @@ use crate::gpu_mirror_display::window_cropping::start_crop_selection;
 use crate::gpu_mirror_display::{binary_images, shutdown};
 use crate::ui_state::{
     AppConfiguration, DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, TitleBarDisplay,
+    WindowInteractions,
 };
 use lamco_wgpu::SupportedFormat;
 use std::num::NonZero;
@@ -545,7 +546,12 @@ impl ApplicationHandler<()> for WinitHandler {
         let sel = selected_surface_capabilities.present.clone();
 
         let profiles = load_profiles().unwrap_or(Default::default());
-        let saved = profiles.user_default();
+        let mut saved = profiles.user_default();
+
+        // The user can have pass through interactions in their profiles, but the application
+        // always converts the startup to interactable to prevent the user from creating
+        // a situation where they are stuck.
+        saved.config.window_interactions = Some(WindowInteractions::Interactable);
 
         let mut app = Application {
             app_state: AppState {
