@@ -1,7 +1,7 @@
 use crate::{
     application_channel_creator::UiChannelSide,
     global_application_state::{
-        AVAILABLE_PRESETS, FOUND_VERSION, VERSION, load_profiles, profiles_filepath,
+        AVAILABLE_PRESETS, FOUND_VERSION, VERSION, load_profiles, profiles_filepath, save_profiles,
     },
     gpu_mirror_display::postprocessing_shaders::DEFAULT_POSTPROCESSOR,
     shaders::{
@@ -1675,12 +1675,12 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             let field_val = EntryBuffer::builder().text(temp).build();
 
-            let entry = gtk::Entry::builder()
+            let name_entry = gtk::Entry::builder()
                 .name("Name")
                 .buffer(&field_val)
                 .build();
 
-            profile_box_r1.append(&entry);
+            profile_box_r1.append(&name_entry);
 
             let ord = format!("{}", selected_idx);
 
@@ -1723,6 +1723,64 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             });
 
             let save = gtk::Button::builder().label("Save").build();
+
+            let v2 = v.clone();
+
+            save.connect_clicked(move |_| {
+                let v2 = v2.clone();
+
+                if let Ok(mut loaded) = load_profiles() {
+                    match loaded.profiles.get_mut(selected_idx as usize) {
+                        Some(item) => {
+                            let temp: &mut Profile = item;
+
+                            let data: GString = name_entry.buffer().text();
+                            let new_name = format!("{}", data);
+
+                            temp.name = Some(new_name);
+
+                            let state = v2.borrow().clone();
+                            let to_save: CreateUiState = state.lossy_into_set_ui().into();
+                            temp.config = to_save;
+                        }
+                        None => {
+                            println!("failed to index loaded profiles");
+                        }
+                    }
+
+                    match save_profiles(loaded) {
+                        Ok(_) => {
+                            let mut v2 = v2.borrow_mut();
+                            let state: &mut UiState = v2.update();
+
+                            state.reload_profiles = true;
+                        },
+                        Err(e) => {
+                            println!("{:#?}", e);
+                            return;
+                        }
+                    }
+                    // todo
+                } else {
+                    println!("failed to load profiles");
+
+                    return;
+                }
+
+                let profiles = load_profiles().unwrap_or(Default::default());
+                let using_profile = profiles.get(selected_idx as usize);
+
+                let idx = selected_idx;
+
+                let mut temp = v2.borrow_mut();
+                let temp = temp.update();
+
+                *temp = using_profile.config.clone().into();
+
+                temp.reload_profiles = true;
+                temp.active_profile = idx as usize;
+            });
+
             let def = gtk::Button::builder().label("Make default").build();
             let rm = gtk::Button::builder().label("Delete").build();
 

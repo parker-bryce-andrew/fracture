@@ -50,6 +50,43 @@ pub fn profiles_filepath() -> PathBuf {
     path
 }
 
+#[derive(Debug)]
+pub enum ProfileSavingErr {
+    FileCreationErr(ProfileLoadingErr),
+    Serialization(serde_json::Error),
+    FileOpenErr(std::io::Error),
+    FileWriteErr(std::io::Error),
+}
+
+pub fn save_profiles(from_loaded: LoadedProfiles) -> Result<(), ProfileSavingErr> {
+    let file_verification = load_profiles();
+
+    match file_verification {
+        Ok(_) => {
+            let path = profiles_filepath();
+
+            match std::fs::File::create(&path) {
+                Ok(mut file) => {
+                    let serde = serde_json::to_string(&from_loaded);
+
+                    if serde.is_err() {
+                        return Err(ProfileSavingErr::Serialization(serde.unwrap_err()));
+                    }
+
+                    let serde = serde.unwrap();
+
+                    match file.write_all(&serde.as_bytes()) {
+                        Ok(_) => return Ok(()),
+                        Err(e) => Err(ProfileSavingErr::FileWriteErr(e)),
+                    }
+                }
+                Err(e) => Err(ProfileSavingErr::FileOpenErr(e)),
+            }
+        }
+        Err(e) => Err(ProfileSavingErr::FileCreationErr(e)),
+    }
+}
+
 pub fn load_profiles() -> Result<LoadedProfiles, ProfileLoadingErr> {
     let mut path = CONFIG_FOLDER.clone();
 
