@@ -497,9 +497,9 @@ impl LoadedProfiles {
 
 impl Default for Profile {
     fn default() -> Self {
-        let mut cfg: CreateUiState = Default::default();
+        let cfg: CreateUiState = Default::default();
 
-        cfg.present = None;
+        // cfg.present = None;
 
         Self {
             name: Some("New Profile".into()),
