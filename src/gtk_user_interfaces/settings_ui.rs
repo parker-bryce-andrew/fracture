@@ -1777,7 +1777,6 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                             return;
                         }
                     }
-                    // todo
                 } else {
                     println!("failed to load profiles");
 
@@ -1799,6 +1798,34 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             });
 
             let def = gtk::Button::builder().label("Make default").build();
+
+            let v2 = v.clone();
+
+            def.connect_clicked(move |_| {
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                if profiles.profiles.get(selected_idx as usize).is_some() {
+                    let temp = profiles.profiles.remove(selected_idx as usize);
+                    profiles.profiles.insert(0, temp);
+                } else {
+                    println!("error loading current profile at idx. attempting to reload profiles");
+                }
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = 0
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
+
             let rm = gtk::Button::builder().label("Delete").build();
 
             profile_box_r3.append(&load);
