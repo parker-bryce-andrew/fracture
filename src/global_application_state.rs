@@ -58,11 +58,15 @@ pub enum ProfileSavingErr {
     FileWriteErr(std::io::Error),
 }
 
-pub fn save_profiles(from_loaded: LoadedProfiles) -> Result<(), ProfileSavingErr> {
+pub fn save_profiles(mut from_loaded: LoadedProfiles) -> Result<(), ProfileSavingErr> {
     let file_verification = load_profiles();
 
     match file_verification {
         Ok(_) => {
+            if from_loaded.profiles.len() == 0 {
+                from_loaded.profiles = vec![Default::default()];
+            }
+
             let path = profiles_filepath();
 
             match std::fs::File::create(&path) {
