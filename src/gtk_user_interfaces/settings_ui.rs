@@ -1677,6 +1677,31 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             }
 
             let new = gtk::Button::builder().label("New").build();
+
+            let v2 = v.clone();
+
+            new.connect_clicked(move |_| {
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                profiles.profiles.push(Default::default());
+
+                let temp = profiles.clone();
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = temp.profiles.len() - 1;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
+
             profile_box_r0.append(&new);
             profile_box_r0.append(&temp2);
 
@@ -1714,7 +1739,71 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             profile_box_r1.append(&entry);
 
             let up = gtk::Button::builder().label("+").build();
+
+            let v2 = v.clone();
+
+            up.connect_clicked(move |_| {
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                let idx = (((selected_idx as isize) + 1) as usize)
+                    .min(((profiles.profiles.len() as isize) - 1).max(0) as usize);
+
+                if profiles.profiles.get(selected_idx as usize).is_some() {
+                    let temp = profiles.profiles.remove(selected_idx as usize);
+
+                    let idx = idx;
+                    profiles.profiles.insert(idx as usize, temp);
+                } else {
+                    println!("error loading current profile at idx. attempting to reload profiles");
+                }
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = idx as usize;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
+
             let down = gtk::Button::builder().label("-").build();
+
+            let v2 = v.clone();
+
+            down.connect_clicked(move |_| {
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                let idx = ((selected_idx as isize) - 1).max(0);
+
+                if profiles.profiles.get(selected_idx as usize).is_some() {
+                    let temp = profiles.profiles.remove(selected_idx as usize);
+
+                    let idx = idx;
+                    profiles.profiles.insert(idx as usize, temp);
+                } else {
+                    println!("error loading current profile at idx. attempting to reload profiles");
+                }
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = idx as usize;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
 
             profile_box_r1.append(&down);
             profile_box_r1.append(&up);
