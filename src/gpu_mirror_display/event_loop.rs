@@ -545,7 +545,7 @@ impl ApplicationHandler<()> for WinitHandler {
         let sel = selected_surface_capabilities.present.clone();
 
         let profiles = load_profiles().unwrap_or(Default::default());
-        let saved = profiles.active();
+        let saved = profiles.user_default();
 
         let mut app = Application {
             app_state: AppState {

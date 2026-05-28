@@ -5,7 +5,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wgpu::PresentMode;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum VideoLocation {
     NorthWest = 0,
     North = 1,
@@ -35,7 +35,7 @@ impl Into<VideoLocation> for i32 {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WindowBackground {
     Transparent,
     Color(f32, f32, f32, f32),
@@ -47,7 +47,7 @@ impl Default for WindowBackground {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WindowBehaviour {
     SizeMatchesMirrorAspect,
     SizeSetByUser(VideoLocation),
@@ -59,7 +59,7 @@ impl Default for WindowBehaviour {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 
 pub enum ScaleDecision {
     DontScale,
@@ -72,7 +72,7 @@ impl Default for ScaleDecision {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum VideoAspect {
     MaintainAspectRatio(ScaleDecision, WindowBehaviour),
     DoNotMaintainAspect,
@@ -116,7 +116,7 @@ pub struct AdjCopy {
     pub page_size: f64,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WindowInteractions {
     Interactable,
     PassThrough,
@@ -327,7 +327,7 @@ impl UiState {
 ///
 /// Using this is just about perfection in defining a version. The other has debug fields
 /// related to the UI. This one is for programmatically using with an IDE
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CreateUiState {
     pub display_title: Option<TitleBarDisplay>,
     pub aspect_ratio: Option<VideoAspect>,
@@ -467,7 +467,7 @@ impl Default for LoadedProfiles {
 }
 
 impl LoadedProfiles {
-    pub fn active(&self) -> Profile {
+    pub fn user_default(&self) -> Profile {
         self.profiles[0].clone()
     }
 

@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     gpu_mirror_display::state::Application,
-    ui_state::{RemoveColors, TitleBarDisplay, UiState},
+    ui_state::{CreateUiState, RemoveColors, TitleBarDisplay, UiState},
 };
 use wgpu::{Extent3d, Queue, TextureDescriptor, TextureView, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
@@ -140,88 +140,112 @@ pub fn write_ui_texture_and_handle_ui_actions(
                 }
             }
 
+            let temp = app.configuration.active.clone();
+            let temp = temp.lossy_into_set_ui();
+            let mut active_cfg: CreateUiState = temp.into();
+
+            let idx = app.configuration.active.active_profile;
+
+            let profile_list = app.configuration.profiles.list();
+
+            let mut in_use_profile = profile_list
+                .get(idx)
+                .map(|v| v.clone())
+                .unwrap_or(profile_list.last().unwrap().clone())
+                .clone()
+                .config;
+
+            // These failover and shouldn't be compared to the user's preferences.
+            active_cfg.present = None;
+            in_use_profile.present = None;
+
             // trash button
-            {
-                let img_position = (
-                    10 as i32
-                        + ((binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 10) * 2),
-                    height as i32
-                        - (binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 5 * 1),
-                );
-
-                if mouse_in_img_bounds(
-                    &mouse_position,
-                    &img_position,
-                    &binary_images::ICON_TRASH_NO_FILL,
-                    &mut found_hover,
-                ) {
-                    write_image_to_texture(
-                        app,
-                        &texture,
-                        &binary_images::ICON_TRASH_FILL,
-                        img_position,
+            if in_use_profile != active_cfg {
+                {
+                    let img_position = (
+                        10 as i32
+                            + ((binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 10)
+                                * 2),
+                        height as i32
+                            - (binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 5 * 1),
                     );
-                } else {
-                    write_image_to_texture(
-                        app,
-                        &texture,
+
+                    if mouse_in_img_bounds(
+                        &mouse_position,
+                        &img_position,
                         &binary_images::ICON_TRASH_NO_FILL,
-                        img_position,
-                    );
-                }
+                        &mut found_hover,
+                    ) {
+                        write_image_to_texture(
+                            app,
+                            &texture,
+                            &binary_images::ICON_TRASH_FILL,
+                            img_position,
+                        );
+                    } else {
+                        write_image_to_texture(
+                            app,
+                            &texture,
+                            &binary_images::ICON_TRASH_NO_FILL,
+                            img_position,
+                        );
+                    }
 
-                if found_remove_mouse_click(
-                    &mut app.user_interaction.mouse_clicks,
-                    &img_position,
-                    &binary_images::ICON_TRASH_NO_FILL,
-                ) {
-                    // start_crop_selection(app);
+                    if found_remove_mouse_click(
+                        &mut app.user_interaction.mouse_clicks,
+                        &img_position,
+                        &binary_images::ICON_TRASH_NO_FILL,
+                    ) {
+                        // start_crop_selection(app);
+                    }
                 }
             }
 
             // profile button
-            {
-                let img_position = (
-                    width as i32
-                        - ((binary_images::ICON_DIAMOND_PROFILE_NO_FILL
-                            .dimensions
-                            .height as i32
-                            + 10)
-                            * 1),
-                    height as i32
-                        - (binary_images::ICON_DIAMOND_PROFILE_NO_FILL
-                            .dimensions
-                            .height as i32
-                            + 7 * 1),
-                );
-
-                if mouse_in_img_bounds(
-                    &mouse_position,
-                    &img_position,
-                    &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
-                    &mut found_hover,
-                ) {
-                    write_image_to_texture(
-                        app,
-                        &texture,
-                        &binary_images::ICON_DIAMOND_PROFILE_FILL,
-                        img_position,
+            if profile_list.len() > 1 {
+                {
+                    let img_position = (
+                        width as i32
+                            - ((binary_images::ICON_DIAMOND_PROFILE_NO_FILL
+                                .dimensions
+                                .height as i32
+                                + 10)
+                                * 1),
+                        height as i32
+                            - (binary_images::ICON_DIAMOND_PROFILE_NO_FILL
+                                .dimensions
+                                .height as i32
+                                + 7 * 1),
                     );
-                } else {
-                    write_image_to_texture(
-                        app,
-                        &texture,
+
+                    if mouse_in_img_bounds(
+                        &mouse_position,
+                        &img_position,
                         &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
-                        img_position,
-                    );
-                }
+                        &mut found_hover,
+                    ) {
+                        write_image_to_texture(
+                            app,
+                            &texture,
+                            &binary_images::ICON_DIAMOND_PROFILE_FILL,
+                            img_position,
+                        );
+                    } else {
+                        write_image_to_texture(
+                            app,
+                            &texture,
+                            &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
+                            img_position,
+                        );
+                    }
 
-                if found_remove_mouse_click(
-                    &mut app.user_interaction.mouse_clicks,
-                    &img_position,
-                    &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
-                ) {
-                    // start_crop_selection(app);
+                    if found_remove_mouse_click(
+                        &mut app.user_interaction.mouse_clicks,
+                        &img_position,
+                        &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
+                    ) {
+                        // start_crop_selection(app);
+                    }
                 }
             }
         }
