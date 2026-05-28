@@ -147,6 +147,8 @@ pub struct UiState {
     pub window_interactions: WindowInteractions,
     pub preset: wgpu::PresentMode,
     pub should_define_new_preset: bool,
+    pub active_profile: usize,
+    pub reload_profiles: bool,
 }
 
 impl UiState {
@@ -258,6 +260,8 @@ impl SetUiState {
             window_interactions,
             preset: selected_preset,
             should_define_new_preset: true,
+            active_profile: 0,
+            reload_profiles: true,
         };
 
         if let Some(postprocessor) = &mut temp.postprocessor {
@@ -301,6 +305,8 @@ impl Default for UiState {
             window_interactions: WindowInteractions::Interactable,
             preset: *&AVAILABLE_PRESETS.lock().unwrap()[0].clone(),
             should_define_new_preset: true,
+            active_profile: 0,
+            reload_profiles: true,
         }
     }
 }
@@ -355,6 +361,8 @@ impl Default for CreateUiState {
             should_define_new_primary_sampler: _,
             preset: presets,
             should_define_new_preset: _,
+            active_profile: _,
+            reload_profiles: _,
         } = UiState::default();
 
         Self {

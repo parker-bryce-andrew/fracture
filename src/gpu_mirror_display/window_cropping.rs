@@ -17,6 +17,8 @@ pub fn start_crop_selection(app: &mut Application) {
     app.app_state.intricate_todo_refactor.crop_button_pressed = true;
     app.app_state.intricate_todo_refactor.new_settings = true;
 
+    app.configuration.saved = app.configuration.active.clone().lossy_into_set_ui().into();
+
     app.configuration.active = UiState {
         display_title: TitleBarDisplay::TitleBarVisible,
         aspect_ratio: VideoAspect::MaintainAspectRatio(
@@ -219,19 +221,7 @@ pub fn if_in_crop_complete_crop(app: &mut Application, from: CropEndTriggeredFro
             // then a 1 pixel selection is made, the crash will happen.
             if_in_crop_complete_crop(app, CropEndTriggeredFrom::EnterPress);
         } else {
-            app.configuration.active = UiState {
-                display_title: TitleBarDisplay::HiddenTitleBar,
-                aspect_ratio: VideoAspect::MaintainAspectRatio(
-                    ScaleDecision::Scale,
-                    WindowBehaviour::SizeMatchesMirrorAspect,
-                ),
-                frame_transparency: 100.0,
-                need_rebuild: true,
-                updated: true,
-                green_screen: crate::ui_state::GreenScreen::None,
-                postprocessor: Default::default(),
-                ..Default::default()
-            };
+            app.configuration.active = app.configuration.saved.clone().into();
 
             app.app_state.intricate_todo_refactor.new_settings = true;
 

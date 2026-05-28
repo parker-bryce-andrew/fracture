@@ -20,6 +20,7 @@ use crate::gpu_mirror_display::state::{
 };
 use crate::gpu_mirror_display::utility_texture::DmaOrCpuMemory;
 use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
+use crate::gpu_mirror_display::window_cropping::start_crop_selection;
 use crate::gpu_mirror_display::{binary_images, shutdown};
 use crate::ui_state::{
     CreateUiState, DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, GreenScreen, ScaleDecision,
@@ -544,6 +545,9 @@ impl ApplicationHandler<()> for WinitHandler {
 
         let sel = selected_surface_capabilities.present.clone();
 
+        let profiles = load_profiles().unwrap_or(Default::default());
+        let saved = profiles.active();
+
         let mut app = Application {
             app_state: AppState {
                 cropped: None,
@@ -631,27 +635,9 @@ impl ApplicationHandler<()> for WinitHandler {
                 },
             },
             configuration: crate::ui_state::AppConfiguration {
-                active: UiState {
-                    display_title: TitleBarDisplay::TitleBarVisible,
-                    aspect_ratio: VideoAspect::MaintainAspectRatio(
-                        ScaleDecision::DontScale,
-                        WindowBehaviour::SizeSetByUser(VideoLocation::Center),
-                    ),
-                    frame_transparency: 100.0,
-                    need_rebuild: true,
-                    updated: true,
-                    green_screen: GreenScreen::None,
-                    postprocessor: Default::default(),
-                    background: WindowBackground::Color(
-                        CROP_COLOR.0,
-                        CROP_COLOR.1,
-                        CROP_COLOR.2,
-                        CROP_COLOR.3,
-                    ),
-                    ..Default::default()
-                },
-                saved: CreateUiState::default(),
-                profiles: load_profiles().unwrap_or(Default::default()),
+                active: saved.config.clone().into(),
+                saved: saved.config,
+                profiles: profiles,
             },
             systems: AppSystems {
                 wgpu: WgpuContainer {
@@ -694,6 +680,7 @@ impl ApplicationHandler<()> for WinitHandler {
             .render
             .resize(&mut app.systems.wgpu, window.as_ref().unwrap().inner_size());
 
+        start_crop_selection(&mut app);
         on_redraw(&mut app);
 
         self.app = Some(app);
