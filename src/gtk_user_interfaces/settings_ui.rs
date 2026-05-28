@@ -1466,6 +1466,8 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         result.update_delayed_rebuild();
         result.need_rebuild = false;
 
+        result.active_profile = v2.borrow().active_profile;
+
         *v2.borrow_mut().update_delayed_rebuild() = result;
     });
 
@@ -1624,17 +1626,15 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         .orientation(gtk4::Orientation::Horizontal)
         .build();
 
+    let err_text_box = gtk::TextView::builder().visible(false).build();
     profile_box.append(&profile_box_r0);
+    profile_box.append(&err_text_box);
 
     active_profile_out.append(&active_profile);
 
     profile_box.append(&active_profile_out);
     active_profile.append(&profile_box_r1);
     active_profile.append(&profile_box_r3);
-
-    let err_text_box = gtk::TextView::builder().visible(false).build();
-
-    profile_box.append(&err_text_box);
 
     let profiles_loaded = load_profiles();
 
@@ -1672,6 +1672,18 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             if active != selected_copy {
                 active_profile_out.add_css_class("warn");
+
+                let debug = format!(
+                    "{}{}{}",
+                    "The profile below does not match the active configuration.",
+                    "\r\n\r\n",
+                    "Would you like to save it to the profile?"
+                );
+
+                let text_buff = TextBuffer::builder().text(debug).build();
+                err_text_box.set_buffer(Some(&text_buff));
+                err_text_box.set_visible(true);
+                // err_text_box.add_css_class("warn");
             } else {
                 active_profile_out.add_css_class("ok");
             }
@@ -1928,13 +1940,19 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                     println!("error loading current profile at idx. attempting to reload profiles");
                 }
 
+                let copy = profiles.clone();
+
                 match save_profiles(profiles) {
                     Ok(_) => {
                         let mut v2 = v2.borrow_mut();
                         let state: &mut UiState = v2.update();
 
                         state.reload_profiles = true;
-                        state.active_profile = 0
+
+                        let closest = ((selected_idx as isize - 1).max(0))
+                            .min((copy.profiles.len() as isize - 1).max(0));
+
+                        state.active_profile = closest as usize;
                     }
                     Err(e) => {
                         println!("{:#?}", e);
@@ -1975,11 +1993,10 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             let text_buff = TextBuffer::builder().text(debug).build();
             err_text_box.set_buffer(Some(&text_buff));
             err_text_box.set_visible(true);
+            err_text_box.add_css_class("err");
 
             active_profile_out.set_visible(false);
             profile_box_r0.set_visible(false);
-
-            err_text_box.add_css_class("err");
 
             let reload = gtk::Button::builder().label("Try reloading").build();
             let delete = gtk::Button::builder().label("Delete it").build();
