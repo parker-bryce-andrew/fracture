@@ -455,7 +455,7 @@ impl Into<UiState> for SetUiState {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoadedProfiles {
-    profiles: Vec<Profile>,
+    pub profiles: Vec<Profile>,
 }
 
 impl Default for LoadedProfiles {
@@ -473,10 +473,6 @@ impl LoadedProfiles {
 
     pub fn list(&self) -> &Vec<Profile> {
         &self.profiles
-    }
-
-    pub fn set_active(&mut self, idx: usize) {
-        self.profiles.swap(0, idx);
     }
 }
 

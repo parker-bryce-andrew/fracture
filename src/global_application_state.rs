@@ -39,6 +39,7 @@ pub enum ProfileLoadingErr {
     InvalidFormat(serde_json::Error),
     CreateNew(std::io::Error),
     WriteErr(std::io::Error),
+    EmptyList,
 }
 
 pub fn profiles_filepath() -> PathBuf {
@@ -75,6 +76,10 @@ pub fn load_profiles() -> Result<LoadedProfiles, ProfileLoadingErr> {
             let Ok(val) = res else {
                 return Err(ProfileLoadingErr::InvalidFormat(res.unwrap_err()));
             };
+
+            if val.list().len() == 0 {
+                return Err(ProfileLoadingErr::EmptyList);
+            }
 
             return Ok(val);
         }

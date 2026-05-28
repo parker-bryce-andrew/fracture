@@ -6,6 +6,7 @@ use super::{
     window_cropping::start_crop_selection,
 };
 use crate::{
+    global_application_state::load_profiles,
     gpu_mirror_display::state::Application,
     ui_state::{CreateUiState, RemoveColors, TitleBarDisplay, UiState},
 };
@@ -244,7 +245,29 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
                     ) {
-                        // start_crop_selection(app);
+                        app.configuration.profiles = load_profiles().unwrap_or(Default::default());
+                        let profile_list = app.configuration.profiles.list();
+
+                        let next = (idx + 1) % profile_list.len();
+
+                        let next_profile = profile_list
+                            .get(next)
+                            .map(|v| v.clone())
+                            .unwrap_or(profile_list.last().unwrap().clone())
+                            .clone()
+                            .config;
+
+                        let mut as_state: UiState = next_profile.into();
+                        as_state.active_profile = next;
+
+                        app.configuration.active = as_state;
+                        app.app_state.intricate_todo_refactor.new_settings = true;
+
+                        app.external
+                            .channels
+                            .gpu_sender_request
+                            .send(app.configuration.active.clone())
+                            .unwrap();
                     }
                 }
             }
