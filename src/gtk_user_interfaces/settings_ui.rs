@@ -18,7 +18,7 @@ use gtk4::{
     prelude::*,
 };
 use rand::{Rng, seq::IndexedRandom};
-use std::{cell::RefCell, rc::Rc, sync::Mutex};
+use std::{cell::RefCell, rc::Rc, sync::Mutex, time::Duration};
 use wgpu::FilterMode;
 
 pub static SETTINGS_IS_RUNNING: Mutex<bool> = Mutex::new(false);
@@ -113,6 +113,18 @@ pub fn run_settings_app(channel: &Rc<RefCell<UiChannelSide>>, state: Rc<RefCell<
                         *state.borrow_mut() = recv;
 
                         state.borrow_mut().scroll_value = before;
+                    }
+                }
+
+                {
+                    let mut state = state.borrow_mut();
+
+                    if let Some(timer) = state.delayed_uptime_timer.clone() {
+                        if let Ok(v) = timer.elapsed() {
+                            if Duration::from_secs(1) < v {
+                                state.update().delayed_uptime_timer = None;
+                            }
+                        }
                     }
                 }
 
@@ -887,7 +899,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                     0.0
                 };
 
-                *&mut state.borrow_mut().update_no_rebuild().green_screen =
+                *&mut state.borrow_mut().update_delayed_rebuild().green_screen =
                     GreenScreen::Color(RemoveColors {
                         base_color: (new_color.red(), new_color.green(), new_color.blue()),
                         sensitivity: sense,
@@ -920,7 +932,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                     (0.0, 0.0, 0.0)
                 };
 
-                state.borrow_mut().update_no_rebuild().green_screen =
+                state.borrow_mut().update_delayed_rebuild().green_screen =
                     GreenScreen::Color(RemoveColors {
                         base_color: rgb,
                         sensitivity: v,
@@ -1213,7 +1225,10 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         let v = v.value() as f32;
         let state = v2.clone();
 
-        state.borrow_mut().update_no_rebuild().frame_transparency = v;
+        state
+            .borrow_mut()
+            .update_delayed_rebuild()
+            .frame_transparency = v;
     });
 
     let all = gtk::ScrolledWindow::builder()
@@ -1280,12 +1295,13 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
                 let state = v2.clone();
 
-                *&mut state.borrow_mut().update_no_rebuild().background = WindowBackground::Color(
-                    new_color.red(),
-                    new_color.green(),
-                    new_color.blue(),
-                    new_color.alpha(),
-                )
+                *&mut state.borrow_mut().update_delayed_rebuild().background =
+                    WindowBackground::Color(
+                        new_color.red(),
+                        new_color.green(),
+                        new_color.blue(),
+                        new_color.alpha(),
+                    )
             });
 
             color_choice.add_css_class("border");
@@ -1447,9 +1463,10 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
         let mut result = temp.build_new_full_settings_state();
 
+        result.update_delayed_rebuild();
         result.need_rebuild = false;
 
-        *v2.borrow_mut().update_no_rebuild() = result;
+        *v2.borrow_mut().update_delayed_rebuild() = result;
     });
 
     let v2 = v.clone();
@@ -1647,11 +1664,11 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             let selected = selected_profile.config.clone();
 
-            let mut selected_copy = selected.clone();
-            let mut active: CreateUiState = { v.borrow().clone() }.lossy_into_set_ui().into();
+            let selected_copy = selected.clone();
+            let active: CreateUiState = { v.borrow().clone() }.lossy_into_set_ui().into();
 
-            active.present = None;
-            selected_copy.present = None;
+            // active.present = None;
+            // selected_copy.present = None;
 
             if active != selected_copy {
                 active_profile_out.add_css_class("warn");
@@ -1754,7 +1771,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                             let state: &mut UiState = v2.update();
 
                             state.reload_profiles = true;
-                        },
+                        }
                         Err(e) => {
                             println!("{:#?}", e);
                             return;

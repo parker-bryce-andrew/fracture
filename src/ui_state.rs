@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use crate::{
     global_application_state::AVAILABLE_PRESETS,
     gpu_mirror_display::{defaults::CROP_COLOR, postprocessing_shaders::PostprocessingErrors},
@@ -149,6 +151,7 @@ pub struct UiState {
     pub should_define_new_preset: bool,
     pub active_profile: usize,
     pub reload_profiles: bool,
+    pub delayed_uptime_timer: Option<SystemTime>,
 }
 
 impl UiState {
@@ -262,6 +265,7 @@ impl SetUiState {
             should_define_new_preset: true,
             active_profile: 0,
             reload_profiles: true,
+            delayed_uptime_timer: None,
         };
 
         if let Some(postprocessor) = &mut temp.postprocessor {
@@ -307,19 +311,28 @@ impl Default for UiState {
             should_define_new_preset: true,
             active_profile: 0,
             reload_profiles: true,
+            delayed_uptime_timer: None,
         }
     }
 }
 
 impl UiState {
-    pub fn update(&mut self) -> &mut Self {
-        self.need_rebuild = true;
-        self.update_no_rebuild()
+    fn on_all_changes(&mut self) -> &mut Self {
+        self.updated = true;
+
+        self
     }
 
-    pub fn update_no_rebuild(&mut self) -> &mut Self {
-        self.updated = true;
-        self
+    pub fn update(&mut self) -> &mut Self {
+        self.need_rebuild = true;
+
+        self.on_all_changes()
+    }
+
+    pub fn update_delayed_rebuild(&mut self) -> &mut Self {
+        self.delayed_uptime_timer = Some(SystemTime::now());
+
+        self.on_all_changes()
     }
 }
 
@@ -363,6 +376,7 @@ impl Default for CreateUiState {
             should_define_new_preset: _,
             active_profile: _,
             reload_profiles: _,
+            delayed_uptime_timer: _,
         } = UiState::default();
 
         Self {
