@@ -1,6 +1,6 @@
 use crate::application_channel_creator::GpuChannelSide;
 use crate::global_application_state::{AVAILABLE_PRESETS, FPS_TRACKING, SAFE_MODE, load_profiles};
-use crate::gpu_mirror_display::defaults::{APPLICATION_NAME, CROP_COLOR, PRESENT_PREFERENCES};
+use crate::gpu_mirror_display::defaults::{APPLICATION_NAME, PRESENT_PREFERENCES};
 use crate::gpu_mirror_display::input::events_mouse::ResizeInteractionsState;
 use crate::gpu_mirror_display::input::on_input_events;
 use crate::gpu_mirror_display::input::utility_mouse::remove_expired_mouse_events;
@@ -23,8 +23,7 @@ use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
 use crate::gpu_mirror_display::window_cropping::start_crop_selection;
 use crate::gpu_mirror_display::{binary_images, shutdown};
 use crate::ui_state::{
-    CreateUiState, DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, GreenScreen, ScaleDecision,
-    TitleBarDisplay, UiState, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
+    AppConfiguration, DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, TitleBarDisplay,
 };
 use lamco_wgpu::SupportedFormat;
 use std::num::NonZero;
@@ -634,7 +633,7 @@ impl ApplicationHandler<()> for WinitHandler {
                     },
                 },
             },
-            configuration: crate::ui_state::AppConfiguration {
+            configuration: AppConfiguration {
                 active: saved.config.clone().into(),
                 saved: saved.config,
                 profiles: profiles,
