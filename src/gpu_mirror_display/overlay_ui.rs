@@ -104,9 +104,8 @@ pub fn write_ui_texture_and_handle_ui_actions(
             // crop button
             {
                 let img_position = (
-                    0 as i32
-                        + ((10 + binary_images::ICON_PIP_NO_FILL.dimensions.height as i32 + 10)
-                            * 1),
+                    10 as i32
+                        + ((binary_images::ICON_PIP_NO_FILL.dimensions.height as i32 + 10) * 1),
                     height as i32
                         - (binary_images::ICON_PIP_NO_FILL.dimensions.height as i32 + 5 * 1),
                 );
@@ -138,6 +137,91 @@ pub fn write_ui_texture_and_handle_ui_actions(
                     &binary_images::ICON_PIP_NO_FILL,
                 ) {
                     start_crop_selection(app);
+                }
+            }
+
+            // trash button
+            {
+                let img_position = (
+                    10 as i32
+                        + ((binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 10) * 2),
+                    height as i32
+                        - (binary_images::ICON_TRASH_NO_FILL.dimensions.height as i32 + 5 * 1),
+                );
+
+                if mouse_in_img_bounds(
+                    &mouse_position,
+                    &img_position,
+                    &binary_images::ICON_TRASH_NO_FILL,
+                    &mut found_hover,
+                ) {
+                    write_image_to_texture(
+                        app,
+                        &texture,
+                        &binary_images::ICON_TRASH_FILL,
+                        img_position,
+                    );
+                } else {
+                    write_image_to_texture(
+                        app,
+                        &texture,
+                        &binary_images::ICON_TRASH_NO_FILL,
+                        img_position,
+                    );
+                }
+
+                if found_remove_mouse_click(
+                    &mut app.user_interaction.mouse_clicks,
+                    &img_position,
+                    &binary_images::ICON_TRASH_NO_FILL,
+                ) {
+                    // start_crop_selection(app);
+                }
+            }
+
+            // profile button
+            {
+                let img_position = (
+                    width as i32
+                        - ((binary_images::ICON_DIAMOND_PROFILE_NO_FILL
+                            .dimensions
+                            .height as i32
+                            + 10)
+                            * 1),
+                    height as i32
+                        - (binary_images::ICON_DIAMOND_PROFILE_NO_FILL
+                            .dimensions
+                            .height as i32
+                            + 7 * 1),
+                );
+
+                if mouse_in_img_bounds(
+                    &mouse_position,
+                    &img_position,
+                    &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
+                    &mut found_hover,
+                ) {
+                    write_image_to_texture(
+                        app,
+                        &texture,
+                        &binary_images::ICON_DIAMOND_PROFILE_FILL,
+                        img_position,
+                    );
+                } else {
+                    write_image_to_texture(
+                        app,
+                        &texture,
+                        &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
+                        img_position,
+                    );
+                }
+
+                if found_remove_mouse_click(
+                    &mut app.user_interaction.mouse_clicks,
+                    &img_position,
+                    &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
+                ) {
+                    // start_crop_selection(app);
                 }
             }
         }

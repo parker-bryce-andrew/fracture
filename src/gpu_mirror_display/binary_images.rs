@@ -157,7 +157,7 @@ pub const ICON_PIP_FILL: OverlayImage = OverlayImage {
     },
 };
 
-pub const TRASH_NO_FILL: OverlayImage = OverlayImage {
+pub const ICON_TRASH_NO_FILL: OverlayImage = OverlayImage {
     data: DmaOrCpuMemory::Cpu(include_bytes!("../../img/bin/12.bin")),
     dimensions: Extent3d {
         width: 50,
@@ -171,7 +171,7 @@ pub const TRASH_NO_FILL: OverlayImage = OverlayImage {
     },
 };
 
-pub const TRASH_FILL: OverlayImage = OverlayImage {
+pub const ICON_TRASH_FILL: OverlayImage = OverlayImage {
     data: DmaOrCpuMemory::Cpu(include_bytes!("../../img/bin/13.bin")),
     dimensions: Extent3d {
         width: 50,
@@ -185,7 +185,7 @@ pub const TRASH_FILL: OverlayImage = OverlayImage {
     },
 };
 
-pub const DIAMOND_PROFILE_NO_FILL: OverlayImage = OverlayImage {
+pub const ICON_DIAMOND_PROFILE_NO_FILL: OverlayImage = OverlayImage {
     data: DmaOrCpuMemory::Cpu(include_bytes!("../../img/bin/14.bin")),
     dimensions: Extent3d {
         width: 50,
@@ -199,7 +199,7 @@ pub const DIAMOND_PROFILE_NO_FILL: OverlayImage = OverlayImage {
     },
 };
 
-pub const DIAMOND_PROFILE_FILL: OverlayImage = OverlayImage {
+pub const ICON_DIAMOND_PROFILE_FILL: OverlayImage = OverlayImage {
     data: DmaOrCpuMemory::Cpu(include_bytes!("../../img/bin/15.bin")),
     dimensions: Extent3d {
         width: 50,
