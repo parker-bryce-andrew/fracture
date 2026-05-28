@@ -748,6 +748,14 @@ impl ApplicationHandler<()> for WinitHandler {
 
             let mut should_update = false;
 
+            if app.configuration.active.reload_profiles {
+                app.configuration.profiles = load_profiles().unwrap_or(Default::default());
+
+                app.configuration.active.reload_profiles = false;
+
+                should_update = true;
+            }
+
             if app.configuration.active.should_define_new_primary_sampler {
                 app.mirror.render.shared_rendering.diffuse_sampler = Some(define_primary_sampler(
                     &app.systems.wgpu.device,

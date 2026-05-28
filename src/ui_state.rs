@@ -474,6 +474,11 @@ impl LoadedProfiles {
     pub fn list(&self) -> &Vec<Profile> {
         &self.profiles
     }
+
+    /// Returns the value at a specified index. This wraps the index if it is larger than the list.
+    pub fn get(&self, idx: usize) -> &Profile {
+        &self.profiles[idx % self.profiles.len()]
+    }
 }
 
 impl Default for Profile {

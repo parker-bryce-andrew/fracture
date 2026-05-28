@@ -1595,19 +1595,12 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         .orientation(gtk4::Orientation::Vertical)
         .build();
 
-    active_profile_out.add_css_class("ok");
-
     let profile_box_r1 = gtk::Box::builder()
         .valign(gtk4::Align::Start)
         .spacing(10)
-        // .halign(gtk4::Align::Center)
         .orientation(gtk4::Orientation::Horizontal)
         .build();
-    // let profile_box_r2 = gtk::Box::builder()
-    //     .valign(gtk4::Align::Start)
-    //     .spacing(10)
-    //     .orientation(gtk4::Orientation::Horizontal)
-    //     .build();
+
     let profile_box_r3 = gtk::Box::builder()
         .valign(gtk4::Align::Start)
         .spacing(10)
@@ -1620,13 +1613,9 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     profile_box.append(&active_profile_out);
     active_profile.append(&profile_box_r1);
-    // profile_box.append(&profile_box_r2);
     active_profile.append(&profile_box_r3);
 
     let err_text_box = gtk::TextView::builder().visible(false).build();
-
-    // err_text_box.set_width_request(1920 / 3);
-    // err_text_box.set_height_request(1080 / 2);
 
     profile_box.append(&err_text_box);
 
@@ -1634,13 +1623,6 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     match profiles_loaded {
         Ok(profiles) => {
-            let defined_profiles: Vec<(usize, Profile)> = profiles
-                .list()
-                .iter()
-                .map(|v| v.clone())
-                .enumerate()
-                .collect();
-
             let profile_names: Vec<(usize, String)> = profiles
                 .list()
                 .iter()
@@ -1657,13 +1639,41 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             let temp: Vec<&str> = profile_names.iter().map(|v| v.1.as_str()).collect();
             let temp2 = gtk::DropDown::from_strings(&temp);
 
+            let selected_idx = { v.borrow().active_profile } as u32;
+
+            temp2.set_selected(selected_idx);
+
+            let selected_profile = profiles.get(selected_idx as usize);
+
+            let selected = selected_profile.config.clone();
+
+            let mut selected_copy = selected.clone();
+            let mut active: CreateUiState = { v.borrow().clone() }.lossy_into_set_ui().into();
+
+            active.present = None;
+            selected_copy.present = None;
+
+            if active != selected_copy {
+                active_profile_out.add_css_class("warn");
+            } else {
+                active_profile_out.add_css_class("ok");
+            }
+
             let new = gtk::Button::builder().label("New").build();
             profile_box_r0.append(&new);
             profile_box_r0.append(&temp2);
 
             profile_box_r1.append(&gtk::Label::new("Name".into()));
 
-            let field_val = EntryBuffer::builder().text(temp[0]).build();
+            let none_text = "None".into();
+
+            let temp = selected_profile
+                .name
+                .as_ref()
+                .unwrap_or(&none_text)
+                .as_str();
+
+            let field_val = EntryBuffer::builder().text(temp).build();
 
             let entry = gtk::Entry::builder()
                 .name("Name")
@@ -1672,16 +1682,14 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             profile_box_r1.append(&entry);
 
-            let field_val = EntryBuffer::builder().text("0").build();
+            let ord = format!("{}", selected_idx);
+
+            let field_val = EntryBuffer::builder().text(&ord).build();
 
             let entry = gtk::Entry::builder()
                 .name("Order")
-                // .focusable(false)
-                // .editing_canceled(true)
-                // .can_target(false)
                 .sensitive(false)
                 .max_width_chars(3)
-                // .editable(false)
                 .buffer(&field_val)
                 .build();
 
@@ -1694,10 +1702,28 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             profile_box_r1.append(&down);
             profile_box_r1.append(&up);
 
-            let def = gtk::Button::builder().label("Make default").build();
             let load = gtk::Button::builder().label("Load").build();
-            let save = gtk::Button::builder().label("Save").build();
 
+            let v2 = v.clone();
+
+            load.connect_clicked(move |_| {
+                let v2 = v2.clone();
+                let profiles = load_profiles().unwrap_or(Default::default());
+                let using_profile = profiles.get(selected_idx as usize);
+
+                let idx = selected_idx;
+
+                let mut temp = v2.borrow_mut();
+                let temp = temp.update();
+
+                *temp = using_profile.config.clone().into();
+
+                temp.reload_profiles = true;
+                temp.active_profile = idx as usize;
+            });
+
+            let save = gtk::Button::builder().label("Save").build();
+            let def = gtk::Button::builder().label("Make default").build();
             let rm = gtk::Button::builder().label("Delete").build();
 
             profile_box_r3.append(&load);
@@ -1708,16 +1734,13 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             let v2 = v.clone();
 
             temp2.connect_selected_item_notify(move |v| {
-                let temp = v.selected();
-
-                let selection: &Profile = &defined_profiles[temp as usize].1;
-
-                let ui: UiState = selection.config.clone().into();
+                let temp_sel = v.selected();
 
                 let mut temp = v2.borrow_mut();
                 let temp = temp.update();
 
-                *temp = ui;
+                temp.reload_profiles = true;
+                temp.active_profile = temp_sel as usize;
             });
         }
         Err(text) => {
