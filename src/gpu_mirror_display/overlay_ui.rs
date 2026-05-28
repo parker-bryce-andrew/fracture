@@ -197,7 +197,27 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_TRASH_NO_FILL,
                     ) {
-                        // start_crop_selection(app);
+                        let profiles = load_profiles().unwrap_or(Default::default());
+                        let using_profile =
+                            profiles.get(app.configuration.active.active_profile as usize);
+
+                        let idx = app.configuration.active.active_profile;
+
+                        let temp = &mut app.configuration.active;
+                        let temp = temp.update();
+
+                        *temp = using_profile.config.clone().into();
+
+                        temp.reload_profiles = true;
+                        temp.active_profile = idx as usize;
+
+                        app.app_state.intricate_todo_refactor.new_settings = true;
+
+                        app.external
+                            .channels
+                            .gpu_sender_request
+                            .send(app.configuration.active.clone())
+                            .unwrap();
                     }
                 }
             }

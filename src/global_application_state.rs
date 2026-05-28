@@ -71,7 +71,7 @@ pub fn save_profiles(mut from_loaded: LoadedProfiles) -> Result<(), ProfileSavin
 
             match std::fs::File::create(&path) {
                 Ok(mut file) => {
-                    let serde = serde_json::to_string(&from_loaded);
+                    let serde = serde_json::to_string_pretty(&from_loaded);
 
                     if serde.is_err() {
                         return Err(ProfileSavingErr::Serialization(serde.unwrap_err()));
