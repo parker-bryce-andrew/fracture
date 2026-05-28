@@ -122,6 +122,12 @@ pub enum WindowInteractions {
     PassThrough,
 }
 
+pub struct AppConfiguration {
+    pub active: UiState,
+    pub saved: CreateUiState,
+    pub profiles: LoadedProfiles,
+}
+
 #[derive(Clone, Debug)]
 pub struct UiState {
     pub display_title: TitleBarDisplay,

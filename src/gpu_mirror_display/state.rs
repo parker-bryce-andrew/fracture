@@ -6,7 +6,9 @@ use crate::{
     gpu_mirror_display::{event_loop::WrappedBridge, pipeline_definitions::SelectedGpuCaps},
     gtk_user_interfaces::settings_ui::SETTINGS_IS_RUNNING,
     stream_creation::utility_gnome_video_frame::PredictedWgpuFrameFormat,
-    ui_state::{GreenScreen, TitleBarDisplay, UiState, VideoAspect, WindowBehaviour},
+    ui_state::{
+        AppConfiguration, GreenScreen, TitleBarDisplay, UiState, VideoAspect, WindowBehaviour,
+    },
 };
 use std::{
     sync::{Arc, mpsc::SendError},
@@ -271,7 +273,7 @@ pub struct Application {
     pub app_state: AppState,
     pub user_interaction: UserInteractionState,
     pub mirror: Mirror,
-    pub configuration: UiState,
+    pub configuration: AppConfiguration,
     pub metrics: AppStatistics,
     pub systems: AppSystems,
     pub external: ExternalControl,
@@ -293,7 +295,7 @@ pub enum EnumeratedState {
 impl SettingsGtk {
     /// Even when reporting Ok(()), it can seem like it failed if it immediately opens again.
     pub fn gtk_shutdown_signal(&self, app: &Application) -> Result<(), ShutdownSettingsErr> {
-        let before = app.configuration.clone();
+        let before = app.configuration.active.clone();
 
         let res = app.external.channels.gpu_sender_request.send(before);
 
@@ -325,7 +327,7 @@ impl SettingsGtk {
 
     /// Even when reporting Ok(()), it can seem like it failed if it immediately closes again
     pub fn gtk_open_signal(&self, app: &Application) -> Result<(), OpenSettingsErr> {
-        let before = app.configuration.clone();
+        let before = app.configuration.active.clone();
 
         if let Err(e) = app.external.channels.gpu_sender_request.send(before) {
             return Err(OpenSettingsErr::FailedToUpdateState(e));
@@ -400,7 +402,7 @@ impl Application {
         let mut active_ui_flags = vec![];
 
         {
-            if TitleBarDisplay::HiddenTitleBar == self.configuration.display_title {
+            if TitleBarDisplay::HiddenTitleBar == self.configuration.active.display_title {
                 active_ui_flags.push(UiFlag::DisplayOverlays);
             }
 
@@ -419,7 +421,7 @@ impl Application {
             }
 
             if let VideoAspect::MaintainAspectRatio(_, WindowBehaviour::SizeMatchesMirrorAspect) =
-                self.configuration.aspect_ratio
+                self.configuration.active.aspect_ratio
             {
                 active_ui_flags.push(UiFlag::OnlyAngles);
             }
@@ -430,7 +432,7 @@ impl Application {
                 active_ui_flags.push(UiFlag::KeepBorders);
             }
 
-            if let GreenScreen::Color(_) = self.configuration.green_screen {
+            if let GreenScreen::Color(_) = self.configuration.active.green_screen {
                 active_ui_flags.push(UiFlag::UseGreenScreen);
             }
         }

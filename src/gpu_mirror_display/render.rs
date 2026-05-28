@@ -84,7 +84,7 @@ pub fn on_redraw(mut app: &mut Application) {
         if_frame_size_changed(&mut app, &frame);
 
         let verts: (Vec<Vertex>, TextureTransformed) =
-            calculate_frame_transformations_for_settings(&app, &app.configuration, &cropped);
+            calculate_frame_transformations_for_settings(&app, &app.configuration.active, &cropped);
 
         add_verticies_to_gpu_buffer(&mut app, &verts.0);
 
@@ -139,7 +139,7 @@ pub fn on_redraw(mut app: &mut Application) {
                 let mut loc = VideoLocation::NorthWest;
 
                 if let VideoAspect::MaintainAspectRatio(_, WindowBehaviour::SizeSetByUser(locset)) =
-                    &app.configuration.aspect_ratio
+                    &app.configuration.active.aspect_ratio
                 {
                     loc = locset.clone();
                 };
@@ -179,14 +179,15 @@ pub fn on_redraw(mut app: &mut Application) {
                         app.app_state.last_iteration.last_known_mouse_position,
                         app.user_interaction.mouse_select_start,
                         &ui_flags,
-                        app.configuration.frame_transparency as f32,
+                        app.configuration.active.frame_transparency as f32,
                         &active_ui_flags,
                         (positioned_frame.origin.x, positioned_frame.origin.y),
                         Some((
                             positioned_frame.origin.x + positioned_frame.dimensions_after.width,
                             positioned_frame.origin.y + positioned_frame.dimensions_after.height,
                         )),
-                        if let GreenScreen::Color(v) = app.configuration.green_screen.clone() {
+                        if let GreenScreen::Color(v) = app.configuration.active.green_screen.clone()
+                        {
                             Some(v)
                         } else {
                             None
@@ -210,11 +211,11 @@ pub fn on_redraw(mut app: &mut Application) {
                     app.app_state.last_iteration.last_known_mouse_position,
                     app.user_interaction.mouse_select_start,
                     &ui_flags,
-                    app.configuration.frame_transparency as f32,
+                    app.configuration.active.frame_transparency as f32,
                     &active_ui_flags,
                     (positioned_frame.origin.x, positioned_frame.origin.y),
                     None,
-                    if let GreenScreen::Color(v) = app.configuration.green_screen.clone() {
+                    if let GreenScreen::Color(v) = app.configuration.active.green_screen.clone() {
                         Some(v)
                     } else {
                         None
@@ -360,11 +361,12 @@ impl Application {
                     label: Some("Render Encoder"),
                 });
 
-        let (cr, cg, cb, ca) = if let WindowBackground::Color(r, g, b, a) = settings.background {
-            (r, g, b, a)
-        } else {
-            (0.0, 0.0, 0.0, 0.0)
-        };
+        let (cr, cg, cb, ca) =
+            if let WindowBackground::Color(r, g, b, a) = settings.active.background {
+                (r, g, b, a)
+            } else {
+                (0.0, 0.0, 0.0, 0.0)
+            };
 
         {
             let mut render_pass =
@@ -519,7 +521,7 @@ impl Application {
                     if let VideoAspect::MaintainAspectRatio(
                         _,
                         WindowBehaviour::SizeSetByUser(locset),
-                    ) = &settings.aspect_ratio
+                    ) = &settings.active.aspect_ratio
                     {
                         loc = locset.clone();
                     };

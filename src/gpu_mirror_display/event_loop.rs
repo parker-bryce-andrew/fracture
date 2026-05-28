@@ -1,5 +1,5 @@
 use crate::application_channel_creator::GpuChannelSide;
-use crate::global_application_state::{AVAILABLE_PRESETS, FPS_TRACKING, SAFE_MODE};
+use crate::global_application_state::{AVAILABLE_PRESETS, FPS_TRACKING, SAFE_MODE, load_profiles};
 use crate::gpu_mirror_display::defaults::{APPLICATION_NAME, CROP_COLOR, PRESENT_PREFERENCES};
 use crate::gpu_mirror_display::input::events_mouse::ResizeInteractionsState;
 use crate::gpu_mirror_display::input::on_input_events;
@@ -22,8 +22,8 @@ use crate::gpu_mirror_display::utility_texture::DmaOrCpuMemory;
 use crate::gpu_mirror_display::utility_vertex::{VERTICES, Vertex};
 use crate::gpu_mirror_display::{binary_images, shutdown};
 use crate::ui_state::{
-    DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, GreenScreen, ScaleDecision, TitleBarDisplay,
-    UiState, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
+    CreateUiState, DEFAULT_MAGNIFY_FILTER, DEFAULT_MINIFY_FILTER, GreenScreen, ScaleDecision,
+    TitleBarDisplay, UiState, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
 };
 use lamco_wgpu::SupportedFormat;
 use std::num::NonZero;
@@ -630,24 +630,28 @@ impl ApplicationHandler<()> for WinitHandler {
                     },
                 },
             },
-            configuration: UiState {
-                display_title: TitleBarDisplay::TitleBarVisible,
-                aspect_ratio: VideoAspect::MaintainAspectRatio(
-                    ScaleDecision::DontScale,
-                    WindowBehaviour::SizeSetByUser(VideoLocation::Center),
-                ),
-                frame_transparency: 100.0,
-                need_rebuild: true,
-                updated: true,
-                green_screen: GreenScreen::None,
-                postprocessor: Default::default(),
-                background: WindowBackground::Color(
-                    CROP_COLOR.0,
-                    CROP_COLOR.1,
-                    CROP_COLOR.2,
-                    CROP_COLOR.3,
-                ),
-                ..Default::default()
+            configuration: crate::ui_state::AppConfiguration {
+                active: UiState {
+                    display_title: TitleBarDisplay::TitleBarVisible,
+                    aspect_ratio: VideoAspect::MaintainAspectRatio(
+                        ScaleDecision::DontScale,
+                        WindowBehaviour::SizeSetByUser(VideoLocation::Center),
+                    ),
+                    frame_transparency: 100.0,
+                    need_rebuild: true,
+                    updated: true,
+                    green_screen: GreenScreen::None,
+                    postprocessor: Default::default(),
+                    background: WindowBackground::Color(
+                        CROP_COLOR.0,
+                        CROP_COLOR.1,
+                        CROP_COLOR.2,
+                        CROP_COLOR.3,
+                    ),
+                    ..Default::default()
+                },
+                saved: CreateUiState::default(),
+                profiles: load_profiles().unwrap_or(Default::default()),
             },
             systems: AppSystems {
                 wgpu: WgpuContainer {
@@ -683,7 +687,7 @@ impl ApplicationHandler<()> for WinitHandler {
         app.external
             .channels
             .gpu_sender_request
-            .send(app.configuration.clone())
+            .send(app.configuration.active.clone())
             .unwrap();
 
         app.mirror
@@ -747,25 +751,25 @@ impl ApplicationHandler<()> for WinitHandler {
                     .resize_countdown_started = true;
             }
 
-            app.configuration = new;
+            app.configuration.active = new;
             app.app_state.intricate_todo_refactor.new_settings = true;
 
             let mut should_update = false;
 
-            if app.configuration.should_define_new_primary_sampler {
+            if app.configuration.active.should_define_new_primary_sampler {
                 app.mirror.render.shared_rendering.diffuse_sampler = Some(define_primary_sampler(
                     &app.systems.wgpu.device,
-                    app.configuration.magnify_filter,
-                    app.configuration.minify_filter,
+                    app.configuration.active.magnify_filter,
+                    app.configuration.active.minify_filter,
                 ));
 
-                app.configuration.should_define_new_primary_sampler = false;
+                app.configuration.active.should_define_new_primary_sampler = false;
 
                 should_update = true;
             }
 
-            if app.configuration.should_define_new_preset {
-                let pre = app.configuration.preset.clone();
+            if app.configuration.active.should_define_new_preset {
+                let pre = app.configuration.active.preset.clone();
 
                 let cfg = match app
                     .mirror
@@ -811,7 +815,7 @@ impl ApplicationHandler<()> for WinitHandler {
                         config
                     }
                     false => {
-                        app.configuration.preset = app
+                        app.configuration.active.preset = app
                             .mirror
                             .render
                             .shared_rendering
@@ -872,14 +876,14 @@ impl ApplicationHandler<()> for WinitHandler {
 
                 should_update = true;
 
-                app.configuration.should_define_new_preset = false;
+                app.configuration.active.should_define_new_preset = false;
             }
 
             if should_update {
                 app.external
                     .channels
                     .gpu_sender_request
-                    .send(app.configuration.clone())
+                    .send(app.configuration.active.clone())
                     .unwrap();
             }
         }
@@ -927,13 +931,13 @@ impl ApplicationHandler<()> for WinitHandler {
         }
 
         if app.app_state.intricate_todo_refactor.new_settings {
-            if let TitleBarDisplay::TitleBarVisible = &app.configuration.display_title {
+            if let TitleBarDisplay::TitleBarVisible = &app.configuration.active.display_title {
                 app.systems.window.set_decorations(true);
             } else {
                 app.systems.window.set_decorations(false);
             }
 
-            match &app.configuration.window_interactions {
+            match &app.configuration.active.window_interactions {
                 crate::ui_state::WindowInteractions::Interactable => {
                     let _ = app.systems.window.set_cursor_hittest(true);
                 }

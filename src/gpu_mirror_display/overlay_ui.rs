@@ -20,7 +20,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
     app: &mut Application,
     surface_size: PhysicalSize<u32>,
 ) -> TextureView {
-    let ui_settings: &UiState = &&app.configuration.clone();
+    let ui_settings: &UiState = &&app.configuration.active.clone();
     let _mouse_position @ (mouse_x, mouse_y): &(u32, u32) = &app
         .app_state
         .last_iteration

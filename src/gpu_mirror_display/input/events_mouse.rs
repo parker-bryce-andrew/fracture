@@ -173,7 +173,7 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
 
     let resize = 10;
 
-    if app.configuration.display_title == TitleBarDisplay::HiddenTitleBar {
+    if app.configuration.active.display_title == TitleBarDisplay::HiddenTitleBar {
         if x < resize && y < resize {
             app.systems
                 .window
@@ -196,7 +196,7 @@ fn on_cursor_movements(app: &mut Application, position: &PhysicalPosition<f64>) 
             app.user_interaction.mouse_resize_state = ResizeInteractionsState::SeResize;
         } else {
             if let VideoAspect::MaintainAspectRatio(_, WindowBehaviour::SizeMatchesMirrorAspect) =
-                app.configuration.aspect_ratio
+                app.configuration.active.aspect_ratio
             {
                 app.systems
                     .window

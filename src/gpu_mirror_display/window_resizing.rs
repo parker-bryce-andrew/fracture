@@ -110,7 +110,7 @@ pub fn if_settings_maintain_aspect_ratio(app: &Application, cropped: &CroppedAre
     if let VideoAspect::MaintainAspectRatio(
         scale_decision,
         WindowBehaviour::SizeMatchesMirrorAspect,
-    ) = &app.configuration.aspect_ratio
+    ) = &app.configuration.active.aspect_ratio
     {
         let PhysicalSize { width, height } = app.systems.window.inner_size();
         let Size {

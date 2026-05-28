@@ -132,8 +132,8 @@ pub fn if_shader_compilation_requested(
     rt: &tokio::runtime::Runtime,
     render_pipeline_layout: &PipelineLayout,
 ) {
-    if app.configuration.gpu_requested_compile {
-        if let Some(v) = &mut app.configuration.postprocessor {
+    if app.configuration.active.gpu_requested_compile {
+        if let Some(v) = &mut app.configuration.active.postprocessor {
             let new_shader = v.submitted_postprocessor.clone();
 
             let new_shader = if let Some(v) = &new_shader {
@@ -207,12 +207,12 @@ pub fn if_shader_compilation_requested(
                 .mirror_output_rendering_pipeline = pipeline;
         }
 
-        app.configuration.gpu_requested_compile = false;
+        app.configuration.active.gpu_requested_compile = false;
 
         app.external
             .channels
             .gpu_sender_request
-            .send(app.configuration.clone())
+            .send(app.configuration.active.clone())
             .unwrap();
     }
 }

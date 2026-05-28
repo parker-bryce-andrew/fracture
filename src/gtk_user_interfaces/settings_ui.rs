@@ -1625,7 +1625,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     let err_text_box = gtk::TextView::builder().visible(false).build();
 
-    err_text_box.set_width_request(1920 / 3);
+    // err_text_box.set_width_request(1920 / 3);
     // err_text_box.set_height_request(1080 / 2);
 
     profile_box.append(&err_text_box);
