@@ -1,7 +1,8 @@
 use crate::{
     application_channel_creator::UiChannelSide,
     global_application_state::{
-        AVAILABLE_PRESETS, FOUND_VERSION, VERSION, load_profiles, profiles_filepath, save_profiles,
+        AVAILABLE_PRESETS, FOUND_VERSION, VERSION, load_profiles, profiles_filepath,
+        reset_profiles, save_profiles,
     },
     gpu_mirror_display::postprocessing_shaders::DEFAULT_POSTPROCESSOR,
     shaders::{
@@ -1999,7 +2000,44 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             profile_box_r0.set_visible(false);
 
             let reload = gtk::Button::builder().label("Try reloading").build();
+
+            let v2 = v.clone();
+
+            reload.connect_clicked(move |_| match load_profiles() {
+                Ok(_) => {
+                    let mut v2 = v2.borrow_mut();
+                    let state: &mut UiState = v2.update();
+
+                    state.reload_profiles = true;
+                    state.active_profile = 0;
+                }
+                Err(e) => {
+                    println!("{:#?}", e);
+                    return;
+                }
+            });
+
             let delete = gtk::Button::builder().label("Delete it").build();
+
+            let v2 = v.clone();
+
+            delete.connect_clicked(move |_| {
+                let profiles = load_profiles().unwrap_or(Default::default());
+
+                match reset_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = 0;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
 
             profile_box.append(&reload);
             profile_box.append(&delete);

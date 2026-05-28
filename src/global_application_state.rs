@@ -58,6 +58,26 @@ pub enum ProfileSavingErr {
     FileWriteErr(std::io::Error),
 }
 
+#[derive(Debug)]
+pub enum ProfileResetErr {
+    FileDeletionErr(std::io::Error),
+    SaveErr(ProfileSavingErr),
+}
+
+pub fn reset_profiles(from_loaded: LoadedProfiles) -> Result<(), ProfileResetErr> {
+    let path = profiles_filepath();
+
+    let res: Result<(), std::io::Error> = std::fs::remove_file(&path);
+
+    match res {
+        Ok(_) => match save_profiles(from_loaded) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(ProfileResetErr::SaveErr(e)),
+        },
+        Err(e) => Err(ProfileResetErr::FileDeletionErr(e)),
+    }
+}
+
 pub fn save_profiles(mut from_loaded: LoadedProfiles) -> Result<(), ProfileSavingErr> {
     let file_verification = load_profiles();
 
