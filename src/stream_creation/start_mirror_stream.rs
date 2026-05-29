@@ -519,21 +519,15 @@ pub fn start_mirroring(
 
     let _listener = stream
         .add_local_listener_with_user_data(meta)
-        .add_buffer(|_, storage, pw| {
-            drop_inactive_buffers(storage);
+        .add_buffer(|_, _, pw| unsafe {
+            let temp = &*pw;
+            let temp = &*temp.buffer;
+            let temp = &*temp.datas;
+            let buff_fd = temp.fd;
 
-            unsafe {
-                let temp = &*pw;
-                let temp = &*temp.buffer;
-                let temp = &*temp.datas;
-                let buff_fd = temp.fd;
-
-                println!("buffer with fd '{}' added", buff_fd);
-            }
+            println!("buffer with fd '{}' added", buff_fd);
         })
         .remove_buffer(move |_, storage, pw| {
-            drop_inactive_buffers(storage);
-
             unsafe {
                 let temp = &*pw;
                 let temp = &*temp.buffer;
@@ -570,9 +564,7 @@ pub fn start_mirroring(
                 let _ = remove_buffer_copy.lock().unwrap().remove(&buff_fd);
             }
         })
-        .state_changed(move |stream_ref, storage, old, new| {
-            drop_inactive_buffers(storage);
-
+        .state_changed(move |stream_ref, _, old, new| {
             match stream_ref.state() {
                 v @ pipewire::stream::StreamState::Error(_) => {
                     println!("{:#?}", v);
@@ -608,8 +600,6 @@ pub fn start_mirroring(
             println!("State changed: {:?} -> {:?}", old, new);
         })
         .param_changed(move |_, storage, id, param| {
-            drop_inactive_buffers(storage);
-
             let Some(param) = param else {
                 return;
             };
@@ -1009,16 +999,16 @@ pub fn start_mirroring(
                 }
             }
 
-            drop_inactive_buffers(storage);
-        })
-        .control_info(|_, b, _, _| {
-            drop_inactive_buffers(b);
-        })
-        .io_changed(|_, storage, _, _, _| {
-            drop_inactive_buffers(storage);
-        })
-        .drained(|_, storage| {
-            drop_inactive_buffers(storage);
+            // I'm worried that all available buffers can reach a state where they're all issued.
+            //
+            // If this happens, I don't know if the process loop will still be called. This could result
+            // in the application doing nothing and can't recover because the pipewire process loop
+            // is also responsible for dropping the Buffer and causing the Drop impl trigger
+            // which queues a buffer.
+            while storage.stream.active_buffers.len() > 2 {
+                drop_inactive_buffers(storage);
+                println!("There were more than 2 active buffers. Attempting to drop buffers.");
+            }
         })
         .register()
         .unwrap();
