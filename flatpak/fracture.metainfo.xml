@@ -38,6 +38,11 @@
     </p>
   </description>
   <releases>
+    <release type="stable" version="0.0.7" date="2026-05-29T00:00:00Z">
+      <description>
+        <p>save and load from profiles, switch to safe mode from settings, and other improvements</p>
+      </description>
+    </release>
     <release type="stable" version="0.0.6" date="2026-05-22T00:00:00Z">
       <description>
         <p>crosshair selection, improved device support, and improved stability</p>
