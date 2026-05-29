@@ -1,7 +1,7 @@
 use crate::{
     application_channel_creator::UiChannelSide,
     global_application_state::{
-        AVAILABLE_PRESETS, FOUND_VERSION, VERSION, load_profiles, profiles_filepath,
+        AVAILABLE_PRESETS, FOUND_VERSION, SAFE_MODE, VERSION, load_profiles, profiles_filepath,
         reset_profiles, save_profiles,
     },
     gpu_mirror_display::postprocessing_shaders::DEFAULT_POSTPROCESSOR,
@@ -1330,6 +1330,68 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     base.append(&gtk::Label::new("Presents".into()));
     base.append(&presents);
+
+    if let Err(_) = std::env::var(SAFE_MODE) {
+        base.append(&gtk::Label::new("Safe Mode".into()));
+
+        let safe_mode_display_box = gtk::Box::builder()
+            .valign(gtk4::Align::Start)
+            .spacing(10)
+            .orientation(gtk4::Orientation::Horizontal)
+            .build();
+
+        let restart_btn = gtk::Button::builder().label("Restart in safe mode").build();
+
+        safe_mode_display_box.append(&restart_btn);
+
+        restart_btn.connect_clicked(move |_| {
+            let text = &gtk::Label::new("Restart in safe mode?".into());
+
+            let display = gtk::Box::builder()
+                .valign(gtk4::Align::Start)
+                .spacing(10)
+                .margin_bottom(10)
+                .margin_end(10)
+                .margin_start(10)
+                .margin_top(10)
+                .orientation(gtk4::Orientation::Vertical)
+                .build();
+
+            display.append(text);
+
+            let dia_safe_mode_btn_box = gtk::Box::builder()
+                .valign(gtk4::Align::Start)
+                .spacing(5)
+                .orientation(gtk4::Orientation::Vertical)
+                .build();
+
+            let safe_mode_yes_dia = gtk::Button::builder().label("Yes").build();
+            let safe_mode_no_dia = gtk::Button::builder().label("No").build();
+
+            dia_safe_mode_btn_box.append(&safe_mode_yes_dia);
+            dia_safe_mode_btn_box.append(&safe_mode_no_dia);
+
+            display.append(&dia_safe_mode_btn_box);
+
+            #[allow(deprecated)]
+            let safe_mode_dia_box = gtk::Dialog::builder().title("").child(&display).build();
+
+            #[allow(deprecated)]
+            safe_mode_dia_box.show();
+
+            safe_mode_yes_dia.connect_clicked(move |_| {
+                println!("Attempting to restart to SAFE_MODE");
+
+                std::process::abort();
+            });
+
+            safe_mode_no_dia.connect_clicked(move |_| {
+                safe_mode_dia_box.close();
+            });
+        });
+
+        base.append(&safe_mode_display_box);
+    }
 
     base.append(&gtk::Label::new("[Debug] SetUiState".into()));
     let force_update = Button::with_label("Check SetUiState");
