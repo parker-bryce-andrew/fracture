@@ -45,6 +45,63 @@ pub struct MapStorage<'a, 'b: 'a> {
     pub active_buffers: Vec<StoredBufferData<'b>>,
 }
 
+fn not_queued_buffers<'a, 'b>(s: &mut StreamData<MapStorage<'a, 'b>>) -> isize {
+    s.stream.active_buffers.len() as isize
+}
+
+fn if_high_dequeued_buffer_count<'a, 'b>(
+    total_buffers: Arc<
+        Mutex<HashMap<i64, std::sync::Arc<smithay::backend::allocator::dmabuf::Dmabuf>>>,
+    >,
+    dequeued_buffers: &mut StreamData<MapStorage<'a, 'b>>,
+) {
+    {
+        let buffer_count = || total_buffers.lock().unwrap().len() as isize;
+
+        let mut not_queued = not_queued_buffers(dequeued_buffers);
+        let mut queued = buffer_count();
+
+        if !(not_queued < queued) {
+            let text = format!("not queued: {}, max queue size: {}", not_queued, queued);
+
+            println!("{text}");
+
+            println!(
+                "The dequeued buffer count is equal to or greater than the buffer count. Attempting to drop buffers."
+            );
+
+            let mut attempts = 0;
+
+            {
+                'drop_attempt: while !(not_queued < queued) {
+                    drop_inactive_buffers(dequeued_buffers);
+
+                    not_queued = not_queued_buffers(dequeued_buffers);
+                    queued = buffer_count();
+
+                    if queued <= 2 {
+                        println!(
+                            "The queued buffer count is less than 2, so we're not going to wait anymore"
+                        );
+                        break 'drop_attempt;
+                    }
+
+                    attempts += 1;
+
+                    if attempts > 100 {
+                        println!(
+                            "Failed to drop after 100 attempts. Returning control to pipewire and hoping it allocates more buffers."
+                        );
+                        break 'drop_attempt;
+                    }
+                }
+            }
+
+            println!("There was success in dropping buffers.");
+        }
+    }
+}
+
 fn drop_inactive_buffers(storage: &mut StreamData<MapStorage<'_, '_>>) {
     // Drop buffers to queue them back to pipewire if it is detected no other threads
     // contain the active DmaBuffer.
@@ -1002,16 +1059,7 @@ pub fn start_mirroring(
                 }
             }
 
-            // I'm worried that all available buffers can reach a state where they're all issued.
-            //
-            // If this happens, I don't know if the process loop will still be called. This could result
-            // in the application doing nothing and can't recover because the pipewire process loop
-            // is also responsible for dropping the Buffer and causing the Drop impl trigger
-            // which queues a buffer.
-            while storage.stream.active_buffers.len() > 2 {
-                drop_inactive_buffers(storage);
-                println!("There were more than 2 active buffers. Attempting to drop buffers.");
-            }
+            if_high_dequeued_buffer_count(buffers.clone(), storage);
         })
         .register()
         .unwrap();
