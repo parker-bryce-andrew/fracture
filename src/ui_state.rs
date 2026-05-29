@@ -1,8 +1,12 @@
 use std::time::SystemTime;
 
 use crate::{
-    global_application_state::AVAILABLE_PRESETS,
-    gpu_mirror_display::{defaults::CROP_COLOR, postprocessing_shaders::PostprocessingErrors},
+    global_application_state::{AVAILABLE_PRESETS, load_profiles},
+    gpu_mirror_display::{
+        defaults::CROP_COLOR,
+        postprocessing_shaders::PostprocessingErrors,
+        state::{AppState, ExternalControl},
+    },
 };
 use serde::{Deserialize, Serialize};
 use wgpu::PresentMode;
@@ -128,6 +132,34 @@ pub struct AppConfiguration {
     pub active: UiState,
     pub saved: CreateUiState,
     pub profiles: LoadedProfiles,
+}
+
+impl AppConfiguration {
+    /// Wrapping loads the profile at the index. It cannot fail.
+    pub fn load_profile(&mut self, idx: usize, st: &mut AppState, ext: &ExternalControl) {
+        self.profiles = load_profiles().unwrap_or(Default::default());
+        let profile_list = self.profiles.list();
+
+        let target = idx % profile_list.len();
+
+        let next_profile = profile_list
+            .get(target)
+            .map(|v| v.clone())
+            .unwrap_or(profile_list.first().unwrap().clone())
+            .clone()
+            .config;
+
+        let mut as_state: UiState = next_profile.into();
+        as_state.active_profile = target;
+
+        self.active = as_state;
+        st.intricate_todo_refactor.new_settings = true;
+
+        ext.channels
+            .gpu_sender_request
+            .send(self.active.clone())
+            .unwrap();
+    }
 }
 
 #[derive(Clone, Debug)]
