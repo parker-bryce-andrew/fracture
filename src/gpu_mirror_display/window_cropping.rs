@@ -17,6 +17,7 @@ pub fn start_crop_selection(app: &mut Application) {
     app.app_state.intricate_todo_refactor.crop_button_pressed = true;
     app.app_state.intricate_todo_refactor.new_settings = true;
 
+    let active_idx = app.configuration.active.active_profile;
     app.configuration.saved = app.configuration.active.clone().lossy_into_set_ui().into();
 
     app.configuration.active = UiState {
@@ -34,6 +35,8 @@ pub fn start_crop_selection(app: &mut Application) {
         background: WindowBackground::Color(CROP_COLOR.0, CROP_COLOR.1, CROP_COLOR.2, CROP_COLOR.3),
         ..Default::default()
     };
+
+    app.configuration.active.active_profile = active_idx;
 
     app.external
         .channels
@@ -221,7 +224,9 @@ pub fn if_in_crop_complete_crop(app: &mut Application, from: CropEndTriggeredFro
             // then a 1 pixel selection is made, the crash will happen.
             if_in_crop_complete_crop(app, CropEndTriggeredFrom::EnterPress);
         } else {
+            let active_idx = app.configuration.active.active_profile;
             app.configuration.active = app.configuration.saved.clone().into();
+            app.configuration.active.active_profile = active_idx;
 
             app.app_state.intricate_todo_refactor.new_settings = true;
 
