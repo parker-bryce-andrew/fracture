@@ -542,15 +542,30 @@ pub fn start_mirroring(
 
                 println!("buffer with fd '{}' removed", buff_fd);
 
-                /*            if let Some((idx, _)) = store.other.map_data.iter().enumerate().find(|(_, buffer)| {
-                    if let Some(id) = buffer.fd {
-                        id == buff_fd
-                    } else {
-                        false
+                // The shutdown panics if the buffers are not removed from memory
+                // when the shutdown is requested. This still doesn't seem correct
+                // because this can leave an active DmaBuffer with an active file
+                // descriptor open.
+                //
+                // It does seem to fix the panic... but maybe it's UB? I don't know.
+                {
+                    if let Some((idx, _)) =
+                        storage
+                            .stream
+                            .active_buffers
+                            .iter()
+                            .enumerate()
+                            .find(|(_, buffer)| {
+                                if let Some(id) = buffer.fd {
+                                    id == buff_fd
+                                } else {
+                                    false
+                                }
+                            })
+                    {
+                        storage.stream.active_buffers.remove(idx);
                     }
-                }) {
-                    store.other.map_data.remove(idx);
-                } */
+                }
 
                 let _ = remove_buffer_copy.lock().unwrap().remove(&buff_fd);
             }
