@@ -993,7 +993,10 @@ pub fn start_mirroring(
                         buffer: buffer_for_storage,
                     };
 
-                    storage.stream.active_buffers.push(temp);
+                    // don't watch the buffers if they're not DmaBuffers.
+                    if buffer_fd_id_opt.is_some() {
+                        storage.stream.active_buffers.push(temp);
+                    }
 
                     *lock = Some(frame);
                 }
