@@ -683,7 +683,7 @@ pub fn start_mirroring(
 
             let mut buffer = None;
 
-            while let Some(buf) = storage.stream.stream_ref.dequeue_buffer() {
+            if let Some(buf) = storage.stream.stream_ref.dequeue_buffer() {
                 buffer = Some(buf);
             }
 
