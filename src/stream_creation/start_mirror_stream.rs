@@ -21,19 +21,61 @@ use mmap::MapOption;
 use pipewire::{
     self as pw,
     spa::{buffer::DataType, pod::PropertyFlags},
+    stream::StreamRef,
 };
 use pw::{properties::properties, spa};
 use smithay::reexports::ash::vk::Format;
 use std::{
     collections::HashMap,
     env,
+    ops::Deref,
     os::raw::c_int,
     sync::{Arc, Mutex, mpsc},
     time::{Duration, SystemTime},
 };
 
-pub struct StreamData {
+pub struct StoredBufferData<'a> {
+    fd: Option<i64>,
+    frame: Arc<LastReported>,
+    buffer: pipewire::buffer::Buffer<'a>,
+}
+
+pub struct MapStorage<'a, 'b: 'a> {
+    pub stream_ref: &'a StreamRef,
+    pub active_buffers: Vec<StoredBufferData<'b>>,
+}
+
+fn drop_inactive_buffers(storage: &mut StreamData<MapStorage<'_, '_>>) {
+    // Drop buffers to queue them back to pipewire if it is detected no other threads
+    // contain the active DmaBuffer.
+    {
+        let mut new = Vec::new();
+        std::mem::swap(&mut storage.stream.active_buffers, &mut new);
+
+        for StoredBufferData { fd, frame, buffer } in new {
+            match Arc::try_unwrap(frame) {
+                // There are no active copies of the DmaBuffer.
+                Ok(_) => {
+                    // Just to be explicit.
+                    //
+                    // This causes the buffer to be queued back to pipewire.
+                    std::mem::drop(buffer);
+                }
+                Err(frame) => {
+                    storage.stream.active_buffers.push(StoredBufferData {
+                        fd,
+                        frame: frame,
+                        buffer,
+                    });
+                }
+            }
+        }
+    }
+}
+
+pub struct StreamData<T> {
     pub format: spa::param::video::VideoInfoRaw,
+    pub stream: T,
 }
 
 fn define_fake_window() -> gnome_window_calls::abstraction::Window {
@@ -352,10 +394,6 @@ pub fn start_mirroring(
     let context = pw::context::Context::new(&mainloop).unwrap();
     let core = context.connect(None).unwrap();
 
-    let meta = StreamData {
-        format: Default::default(),
-    };
-
     let stream = pw::stream::Stream::new(
         &core,
         "video-test",
@@ -366,6 +404,20 @@ pub fn start_mirroring(
         },
     )
     .unwrap();
+
+    let for_store: &StreamRef = stream.deref();
+
+    let map = Vec::new();
+
+    let testing = MapStorage {
+        stream_ref: for_store,
+        active_buffers: map,
+    };
+
+    let meta = StreamData {
+        format: Default::default(),
+        stream: testing,
+    };
 
     let mut last_known_window_dimensions = WindowDimensionsData {
         x: window.cache.x.unwrap_or(0) as i64,
@@ -467,25 +519,45 @@ pub fn start_mirroring(
 
     let _listener = stream
         .add_local_listener_with_user_data(meta)
-        .add_buffer(|_, _, pw| unsafe {
-            let temp = &*pw;
-            let temp = &*temp.buffer;
-            let temp = &*temp.datas;
-            let buff_fd = temp.fd;
+        .add_buffer(|_, storage, pw| {
+            drop_inactive_buffers(storage);
 
-            println!("buffer with fd '{}' added", buff_fd);
+            unsafe {
+                let temp = &*pw;
+                let temp = &*temp.buffer;
+                let temp = &*temp.datas;
+                let buff_fd = temp.fd;
+
+                println!("buffer with fd '{}' added", buff_fd);
+            }
         })
-        .remove_buffer(move |_, _, pw| unsafe {
-            let temp = &*pw;
-            let temp = &*temp.buffer;
-            let temp = &*temp.datas;
-            let buff_fd = temp.fd;
+        .remove_buffer(move |_, storage, pw| {
+            drop_inactive_buffers(storage);
 
-            println!("buffer with fd '{}' removed", buff_fd);
+            unsafe {
+                let temp = &*pw;
+                let temp = &*temp.buffer;
+                let temp = &*temp.datas;
+                let buff_fd = temp.fd;
 
-            let _ = remove_buffer_copy.lock().unwrap().remove(&buff_fd);
+                println!("buffer with fd '{}' removed", buff_fd);
+
+                /*            if let Some((idx, _)) = store.other.map_data.iter().enumerate().find(|(_, buffer)| {
+                    if let Some(id) = buffer.fd {
+                        id == buff_fd
+                    } else {
+                        false
+                    }
+                }) {
+                    store.other.map_data.remove(idx);
+                } */
+
+                let _ = remove_buffer_copy.lock().unwrap().remove(&buff_fd);
+            }
         })
-        .state_changed(move |stream_ref, _, old, new| {
+        .state_changed(move |stream_ref, storage, old, new| {
+            drop_inactive_buffers(storage);
+
             match stream_ref.state() {
                 v @ pipewire::stream::StreamState::Error(_) => {
                     println!("{:#?}", v);
@@ -520,7 +592,9 @@ pub fn start_mirroring(
 
             println!("State changed: {:?} -> {:?}", old, new);
         })
-        .param_changed(move |_, meta, id, param| {
+        .param_changed(move |_, storage, id, param| {
+            drop_inactive_buffers(storage);
+
             let Some(param) = param else {
                 return;
             };
@@ -541,31 +615,32 @@ pub fn start_mirroring(
                 return;
             }
 
-            meta.format
+            storage
+                .format
                 .parse(param)
                 .expect("Failed to parse param changed to VideoInfoRaw");
 
             let temp = PredictedWgpuFrameFormat {
-                format: guess_best_texture_format(meta.format.format()),
-                width: meta.format.size().width,
-                height: meta.format.size().height,
+                format: guess_best_texture_format(storage.format.format()),
+                width: storage.format.size().width,
+                height: storage.format.size().height,
             };
 
             let _ = dbus_channels.predicted_frame_fmt_sender.send(temp);
 
             println!(
                 "Video Format: {} ({:?})",
-                meta.format.format().as_raw(),
-                meta.format.format()
+                storage.format.format().as_raw(),
+                storage.format.format()
             );
 
             println!(
                 "Size: {}x{}",
-                meta.format.size().width,
-                meta.format.size().height
+                storage.format.size().width,
+                storage.format.size().height
             );
 
-            let new_wh = (meta.format.size().width, meta.format.size().height);
+            let new_wh = (storage.format.size().width, storage.format.size().height);
 
             if let Some(old_wh) = last_format_dimensions {
                 if new_wh != old_wh {
@@ -574,8 +649,12 @@ pub fn start_mirroring(
                 }
             }
         })
-        .process(move |stream, meta| {
-            let new_wh = Some((meta.format.size().width, meta.format.size().height));
+        .process(move |_, storage| {
+            drop_inactive_buffers(storage);
+
+            let mut buffer_fd_id_opt = None;
+
+            let new_wh = Some((storage.format.size().width, storage.format.size().height));
             let old_wh = last_format_dimensions;
 
             if new_wh != old_wh {
@@ -589,7 +668,7 @@ pub fn start_mirroring(
 
             let mut buffer = None;
 
-            while let Some(buf) = stream.dequeue_buffer() {
+            while let Some(buf) = storage.stream.stream_ref.dequeue_buffer() {
                 buffer = Some(buf);
             }
 
@@ -598,7 +677,7 @@ pub fn start_mirroring(
                 return;
             }
 
-            let mut buffer = buffer.unwrap();
+            let mut buffer_for_storage = buffer.unwrap();
 
             {
                 if should_track_fps {
@@ -612,7 +691,7 @@ pub fn start_mirroring(
                     }
                 }
 
-                let buffer_data: &mut [spa::buffer::Data] = buffer.datas_mut();
+                let buffer_data: &mut [spa::buffer::Data] = buffer_for_storage.datas_mut();
 
                 if buffer_data.len() == 0 || buffer_data.is_empty() {
                     return;
@@ -626,6 +705,8 @@ pub fn start_mirroring(
                             return;
                         }
 
+                        buffer_fd_id_opt = Some(buffer_fd_id);
+
                         let result = {
                             let buffers = &mut *buffers.lock().unwrap();
 
@@ -635,7 +716,7 @@ pub fn start_mirroring(
                                 let stride = buffer_data[0].chunk().stride();
                                 let size = buffer_data[0].chunk().size() as i32;
 
-                                let fmt = match meta.format.format().0 {
+                                let fmt = match storage.format.format().0 {
                                     // rgbx
                                     7 => DrmFourcc::Rgba8888,
                                     // bgrx
@@ -654,7 +735,7 @@ pub fn start_mirroring(
                                     ((stride / 4) as i32, ((size / 4) / (stride / 4)) as i32),
                                     // todo: fix format
                                     fmt,
-                                    drm_fourcc::DrmModifier::from(meta.format.modifier()),
+                                    drm_fourcc::DrmModifier::from(storage.format.modifier()),
                                     smithay::backend::allocator::dmabuf::DmabufFlags::empty(),
                                 );
 
@@ -790,8 +871,8 @@ pub fn start_mirroring(
                         let temp = CpuFrame {
                             frame_data: data,
                             layout: FrameLayout {
-                                width: meta.format.size().width as u32,
-                                height: meta.format.size().height as u32,
+                                width: storage.format.size().width as u32,
+                                height: storage.format.size().height as u32,
                                 bytes_per_pixel: 4,
                             },
                             scan_time: SystemTime::now(),
@@ -899,9 +980,30 @@ pub fn start_mirroring(
                         _ => {}
                     }
 
-                    *lock = Some(Arc::new(frame));
+                    let frame = Arc::new(frame);
+
+                    let temp = StoredBufferData {
+                        fd: buffer_fd_id_opt,
+                        frame: Arc::clone(&frame),
+                        buffer: buffer_for_storage,
+                    };
+
+                    storage.stream.active_buffers.push(temp);
+
+                    *lock = Some(frame);
                 }
             }
+
+            drop_inactive_buffers(storage);
+        })
+        .control_info(|_, b, _, _| {
+            drop_inactive_buffers(b);
+        })
+        .io_changed(|_, storage, _, _, _| {
+            drop_inactive_buffers(storage);
+        })
+        .drained(|_, storage| {
+            drop_inactive_buffers(storage);
         })
         .register()
         .unwrap();
