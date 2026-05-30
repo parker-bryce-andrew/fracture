@@ -61,6 +61,10 @@ fn if_high_dequeued_buffer_count<'a, 'b>(
         let mut not_queued = not_queued_buffers(dequeued_buffers);
         let mut queued = buffer_count();
 
+        if not_queued == 0 {
+            return;
+        }
+
         if !(not_queued < queued) {
             let text = format!("not queued: {}, max queue size: {}", not_queued, queued);
 
