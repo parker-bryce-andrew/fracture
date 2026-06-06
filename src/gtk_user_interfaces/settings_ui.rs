@@ -422,9 +422,9 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     let avail: Vec<RenderMode> = {
         vec![
-            RenderMode::PredictBest,
-            RenderMode::OnPipewireFrame,
             RenderMode::Continuous,
+            RenderMode::OnPipewireFrame,
+            RenderMode::PredictBestForLowFps,
         ]
     };
 
@@ -1567,7 +1567,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             },
             window_interactions: WindowInteractions::Interactable,
             present: Default::default(),
-            render_mode: RenderMode::PredictBest,
+            render_mode: RenderMode::PredictBestForLowFps,
         };
 
         let mut result = temp.build_new_full_settings_state();

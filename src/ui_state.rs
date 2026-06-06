@@ -270,14 +270,17 @@ impl AppConfiguration {
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub enum RenderMode {
-    PredictBest,
+    /// This has disappointing results. It uses continuous when shaders are used, and OnPipewireFrame otherwise.
+    PredictBestForLowFps,
+    /// If the watched application is less than like 10 FPS, this is desirable.
     OnPipewireFrame,
+    /// Videos and UI will always work
     Continuous,
 }
 
 impl Default for RenderMode {
     fn default() -> Self {
-        RenderMode::PredictBest
+        RenderMode::Continuous
     }
 }
 

@@ -32,7 +32,7 @@ use winit::dpi::PhysicalSize;
 
 pub fn if_render_mode_redraw(app: &Application) {
     match &app.configuration.active.render_mode {
-        RenderMode::PredictBest => match &app.configuration.active.postprocessor {
+        RenderMode::PredictBestForLowFps => match &app.configuration.active.postprocessor {
             Some(_) => {
                 app.systems.window.request_redraw();
             }
