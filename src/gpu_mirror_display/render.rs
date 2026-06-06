@@ -880,7 +880,7 @@ impl Application {
         // is confusing to interpret still because .present() takes different amounts
         // of time depending on the present mode.
         //
-        self.systems.window.pre_present_notify();
+        // self.systems.window.pre_present_notify();
 
         output.present();
 
