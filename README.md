@@ -102,64 +102,6 @@ The exposed methods over Dbus are only accessible to software that is being exec
 With Wayland, [XDG Desktop Portals](https://wiki.archlinux.org/title/XDG_Desktop_Portal) have been a method to manage more so administrative seeming authorizations in a way that works across desktop environments. I think an approach for persistently authorizing applications to manage the mentioned API calls would be a more optimal long term solution. Though, my influence with Gnome Shell development is limited, and my motivation to create a custom Gnome Shell extension that tries to deliver per application approvals isn't high. In the future I may make more of an effort to improve the installed extension to a more secure alternative, but for the previous stated reasons, I think the risk is low while a more perfect solution would [unnecessarily](https://en.wiktionary.org/wiki/yak_shaving) increase my development workload.
 </details>
 
-### Future goals? Don't expect anything soon
-
-I do want improve performance and stability, but I want to focus on other projects at the moment so it might be a while before I release new versions. 
-
-I do have a list of simple improvements I want to make, and an older list of other considerations that are likely outdated now.
-
-<details>
-<summary>Simple improvements that I want to make soon</summary>
-
-* Optimize (avoid shader usage, avoid copies, only use requested dmas, etc)
-* Fix the AdditionalRenderingState and State to be one structure instead of two
-* Fix the file size (remove array hack)
-* The DmaBuffer import process isn't very good and should probably be improved
-* Fix shaders to include better default names
-* Clean code
-* Return to previous config after resizing
-* Change the default config
-* Profiles (default, predefined, etc)
-* Reset button? 
-* Improve speed of killing
-
-</details>
-
-<details>
-<summary>Click to expand other older considerations. Note: These are outdated and changes have been made since I originally wrote them.</summary>
-
-* Move to winit 0.30.x or write custom window management for supported platforms?
-
-* Release on other platforms?
-    * I think xdg-desktop-portals is a good solution for Linux and I'm unlikely to support it much further. Though, I haven't confirmed it works on SteamOS, and might be likely to support that if it doesn't work there already. (I think it might though, SteamOS was built on top of Kde)
-    * I don't plan on releasing for Windows or MacOS unless I think they'd be good for monetization though their stores. I don't plan on charging for Linux versions though. It is ~~open source~~  [IT WILL BE OPEN SOURCE, BUT I HAVE NOT ASSIGNED A LICENSE, AND WILL NOT UNTIL I RELEASE] though, so someone else could create their own versions for those platforms.
-
-* Improved shader support? 
-    * I really like that this tool allows someone to quickly test a shader on parts of other applications and videos. I think some of the following I like considering
-        * Adding persistent buffer memory in postprocessor shaders
-            * I think the shaders that can be written will be very limited in functionality until there's better persistent memory support
-        * Maybe an improved postprocessing pipeline?
-            * I'm interested in the idea of making it more useful for testing with computer vision ideas. In the same way that shaders can be quickly written, I like the idea of trying to make it compatible with testing or training simple real time computer vision neural networks. **Though, I have no plans yet**.
-                
-                Windows and MacOS have been adding more real time AI features, so a tool for actually testing simple ideas might end up being useful.
-
-* Improved security for window calls?
-    * I don't plan on doing this until the Gnome Shell Extension maintainers decide that they don't like that they allowed them. This is also Gnome Shell only, so it's not the highest priority
-
-* Performance and optimizations?
-    * Clean the pipeline code?
-        * When I was benchmarking the amount of time taken for different segments of code, the largest amount of time was spent directly on `present` call to the GPU. There absolutely are repetitive uneeded reptitions of code in the pipeline, but the `present` call was taking like 15-30ms for `FIFO`. Changing to `Mailbox` or `Immediate` resulted in a much smaller delay, but caused the GPU usage to unreasonably spike for the workload. Direct frame rate management might help, but my first impression is that the most significant performance improvements will not be from removing unncessary repetitive function calls in the pipeline.
-    * There's not high GPU or CPU usage, but Gnome seems to be laggging the entire desktop environment with many mirrored windows?
-        * My impression is that it has nothing to do with the graphics pipeline, I think I even tested it with rendering to many windows at once with the same pipeline. It will take better understanding Gnome's screen recorder to fix and might require submitting upstream pull requests to Gnome. I don't really want to blame Gnome yet though, because I haven't taken time to clearly understand what is wrong with it.
-
-
-* Remote desktop? Controlling windows through the mirror output?
-    * I don't plan on writing remote desktop support, but I like the idea of controlling windows through the cropped area. As an example, I use this application to create custom versions of user interfaces when monitoring them. I think a natural extension of that goal is being able to interact with them.
-
-* Saving settings?
-    * I like this idea and it's something I want to do in the future. Like I'm considering adding a drop down on the right side of the mirror output to select a saved configuration.
-
-    </details>
 
 ### Does this provide a way to tile or snap windows like Microsft Windows Powertoys?
 
@@ -167,10 +109,9 @@ No, but on Ubuntu with Gnome, I use [Tiling Shell](https://extensions.gnome.org/
 
 ### My comments on my code quality
 
-It needs work. There's things that I really don't like about the project, like State and AdditionalRenderingState being two parts. The code needs to be cleaned more. The project also needs to be optimized. It should be possible to greatly improve performance from the current version. 
+It needs work. The code needs to be cleaned more. The project also needs to be optimized. It should be possible to improve performance from the current version. 
 
 This is an early version and I've been feeling bored of working on it. I ended up mostly using mpv to crop videos and haven't felt the need to improve it for my personal use.
-
 
 <details>
 <summary>Example using mpv to crop and pan videos</summary>
