@@ -2121,6 +2121,43 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             let v2 = v.clone();
 
+            name_field_val.connect_text_notify(move |val| {
+                let v2 = v2.clone();
+
+                if let Ok(mut loaded) = load_profiles() {
+                    match loaded.profiles.get_mut(selected_idx as usize) {
+                        Some(item) => {
+                            let temp: &mut Profile = item;
+
+                            let data: GString = val.text();
+                            let new_name = format!("{}", data);
+
+                            temp.name = Some(new_name);
+                        }
+                        None => {
+                            println!("failed to index loaded profiles");
+                        }
+                    }
+
+                    match save_profiles(loaded) {
+                        Ok(_) => {
+                            let mut v2 = v2.borrow_mut();
+                            let _: &mut UiState = v2.update_delayed_rebuild();
+                        }
+                        Err(e) => {
+                            println!("{:#?}", e);
+                            return;
+                        }
+                    }
+                } else {
+                    println!("failed to load profiles");
+
+                    return;
+                }
+            });
+
+            let v2 = v.clone();
+
             save.connect_clicked(move |_| {
                 let v2 = v2.clone();
 
