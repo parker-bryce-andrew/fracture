@@ -143,6 +143,8 @@ pub fn run_settings_app(channel: &Rc<RefCell<UiChannelSide>>, state: Rc<RefCell<
                         if let Err(e) = gpu_channel_sender.send(temp) {
                             println!("The receiver for the GPU was dropped: {:?}", e);
                         }
+
+                        let _ = ui.request_new_frame.send(());
                     }
                     state.borrow_mut().updated = false;
                 }

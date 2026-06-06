@@ -41,6 +41,7 @@ pub struct UiChannelSide {
     pub shutdown_confirmed: std::sync::mpsc::Sender<()>,
     pub stream_start_check_settings_ui: std::sync::mpsc::Receiver<bool>,
     pub kill_with_confirm_recv: std::sync::mpsc::Receiver<()>,
+    pub request_new_frame: std::sync::mpsc::Sender<()>,
 }
 
 pub struct DbusSide {
@@ -101,6 +102,7 @@ impl ApplicationChannelsCreator {
                 shutdown_confirmed: s10,
                 stream_start_check_settings_ui: r13,
                 kill_with_confirm_recv: r14,
+                request_new_frame: s16.clone(),
             },
             DbusSide {
                 predicted_frame_fmt_sender: s4,

@@ -896,6 +896,12 @@ impl ApplicationHandler<()> for WinitHandler {
                     .unwrap();
             }
         }
+
+        // All window events trigger a redraw to keep it simple.
+        if event != WindowEvent::RedrawRequested {
+            let _ = app.external.channels.new_frame_notifier.0.send(());
+        }
+
         match event {
             WindowEvent::RedrawRequested => {
                 on_redraw(&mut app);
