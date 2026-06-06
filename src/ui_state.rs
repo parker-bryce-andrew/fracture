@@ -10,6 +10,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use wgpu::PresentMode;
+use winit::keyboard::SmolStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum VideoLocation {
@@ -159,6 +160,35 @@ impl AppConfiguration {
             .gpu_sender_request
             .send(self.active.clone())
             .unwrap();
+    }
+
+    // Loads a profile included in rotation
+    pub fn load_rotation_profile(&mut self, idx: usize, st: &mut AppState, ext: &ExternalControl) {
+        self.profiles = load_profiles().unwrap_or(Default::default());
+        let list: Vec<_> = self.profiles.list().iter().enumerate().collect();
+
+        let mut profile_list: Vec<_> = list
+            .iter()
+            .filter(|(_, v)| match v.in_rotation {
+                Some(defined) => defined,
+                None => true,
+            })
+            .collect();
+
+        if profile_list.len() == 0 {
+            profile_list = vec![];
+            profile_list.push(list.first().unwrap());
+        }
+
+        let target = idx % profile_list.len();
+
+        let (idx, _) = profile_list
+            .get(target)
+            .map(|v| *v)
+            .unwrap_or(profile_list.first().unwrap())
+            .clone();
+
+        self.load_profile(idx, st, ext);
     }
 }
 
@@ -531,11 +561,11 @@ impl Default for Profile {
     fn default() -> Self {
         let cfg: CreateUiState = Default::default();
 
-        // cfg.present = None;
-
         Self {
             name: Some("New Profile".into()),
             config: cfg,
+            shortcut: None,
+            in_rotation: Some(true),
         }
     }
 }
@@ -543,5 +573,7 @@ impl Default for Profile {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Profile {
     pub name: Option<String>,
+    pub shortcut: Option<char>,
+    pub in_rotation: Option<bool>,
     pub config: CreateUiState,
 }

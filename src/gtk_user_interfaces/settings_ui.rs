@@ -21,6 +21,7 @@ use gtk4::{
 use rand::{Rng, seq::IndexedRandom};
 use std::{cell::RefCell, rc::Rc, sync::Mutex, time::Duration};
 use wgpu::FilterMode;
+use winit::keyboard::SmolStr;
 
 pub static SETTINGS_IS_RUNNING: Mutex<bool> = Mutex::new(false);
 
@@ -1683,6 +1684,12 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         .orientation(gtk4::Orientation::Horizontal)
         .build();
 
+    let profile_box_r2 = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Horizontal)
+        .build();
+
     let profile_box_r3 = gtk::Box::builder()
         .valign(gtk4::Align::Start)
         .spacing(10)
@@ -1697,6 +1704,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     profile_box.append(&active_profile_out);
     active_profile.append(&profile_box_r1);
+    active_profile.append(&profile_box_r2);
     active_profile.append(&profile_box_r3);
 
     let profiles_loaded = load_profiles();
@@ -1883,6 +1891,64 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             profile_box_r1.append(&down);
             profile_box_r1.append(&up);
 
+            let kbd_def = gtk::Label::builder()
+                .label(&"Keyboard shortcut".to_string())
+                .build();
+
+            profile_box_r2.append(&kbd_def);
+
+            let field_val = EntryBuffer::builder().text("").build();
+
+            let keyboard = gtk::Entry::builder()
+                .name("Keyboard shortcut")
+                // .sensitive(false)
+                .max_width_chars(3)
+                .xalign(0.5)
+                .buffer(&field_val)
+                .build();
+            // keyboard.conn
+
+            let in_def: RefCell<Option<char>> = RefCell::new(None);
+
+            field_val.connect_text_notify(move |s| {
+                let k: String = s.text().into();
+
+                let Some(c) = k.chars().last() else {
+                    return;
+                };
+
+                // PhysicalKey::try_from(c);
+                let c2 = format!("{c}");
+                let temp: SmolStr = winit::keyboard::SmolStr::new_inline(&c2);
+
+                println!("{temp:#?}");
+
+                match { *in_def.borrow() } {
+                    Some(c2) => {
+                        if c == c2 {
+                            *in_def.borrow_mut() = None;
+                            return;
+                        }
+                    }
+                    None => {
+                        let temp = format!("{c}");
+                        *in_def.borrow_mut() = Some(c);
+                        s.set_text(&temp);
+                    }
+                }
+            });
+            let add_kbd = gtk::Button::builder().label("Add").build();
+
+            profile_box_r2.append(&keyboard);
+            profile_box_r2.append(&add_kbd);
+
+            let btn = gtk::CheckButton::builder()
+                .label(&"Use in rotation".to_string())
+                .active(true)
+                .build();
+
+            profile_box_r2.append(&btn);
+
             let load = gtk::Button::builder().label("Load").build();
 
             let v2 = v.clone();
@@ -1915,7 +1981,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                         Some(item) => {
                             let temp: &mut Profile = item;
 
-                            let data: GString = name_entry.buffer().text();
+                            let data: GString = keyboard.buffer().text();
                             let new_name = format!("{}", data);
 
                             temp.name = Some(new_name);

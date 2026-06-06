@@ -265,7 +265,7 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
                     ) {
-                        app.configuration.load_profile(
+                        app.configuration.load_rotation_profile(
                             app.configuration.active.active_profile + 1,
                             &mut app.app_state,
                             &app.external,
