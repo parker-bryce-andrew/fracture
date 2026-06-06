@@ -108,7 +108,7 @@ pub(crate) fn on_keyboard_events(app: &mut Application, event: &WindowEvent) {
                             winit::keyboard::PhysicalKey::Code(key_code) => match key_code {
                                 KeyCode::Digit0 => {
                                     app.configuration.load_rotation_profile(
-                                        10,
+                                        10 - 1,
                                         &mut app.app_state,
                                         &app.external,
                                     );

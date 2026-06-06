@@ -185,22 +185,22 @@ impl AppConfiguration {
         }
 
         if idx < 0 {
-            let amt = (idx / profile_list.len() as isize) + 1;
+            let amt = (idx / profile_list.len() as isize).abs() + 1;
 
             idx += amt * profile_list.len() as isize;
         }
 
-        let idx = idx as usize;
+        let t = idx as usize;
 
-        let target = idx % profile_list.len();
+        let target = t % profile_list.len();
 
-        let (idx, _) = profile_list
+        let (selected_idx, _) = profile_list
             .get(target)
             .map(|v| *v)
             .unwrap_or(profile_list.first().unwrap())
             .clone();
 
-        self.load_profile(idx, st, ext);
+        self.load_profile(selected_idx, st, ext);
     }
 }
 
