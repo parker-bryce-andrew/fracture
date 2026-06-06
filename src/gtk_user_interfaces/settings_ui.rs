@@ -2061,8 +2061,39 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             let btn = gtk::CheckButton::builder()
                 .label(&"Use in rotation".to_string())
-                .active(true)
+                .active(selected_profile.in_rotation.unwrap_or(true))
                 .build();
+
+            let v2 = v.clone();
+
+            btn.connect_active_notify(move |checkbox| {
+                let v2 = v2.clone();
+
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                let idx = (selected_idx as isize).max(0);
+
+                if profiles.profiles.get(selected_idx as usize).is_some() {
+                    profiles.profiles[selected_idx as usize].in_rotation =
+                        Some(checkbox.is_active());
+                } else {
+                    println!("error loading current profile at idx. attempting to reload profiles");
+                }
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = idx as usize;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
 
             profile_box_r2.append(&btn);
 
