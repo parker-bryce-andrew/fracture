@@ -17,7 +17,7 @@ pub static FRAME_TRANSFER: LazyLock<Mutex<Option<Arc<LastReported>>>> =
 pub const SAFE_MODE: &'static str = "SAFE_MODE";
 pub const FPS_TRACKING: &'static str = "FPS_TRACKING";
 
-pub const VERSION: &'static str = "0.0.7";
+pub const VERSION: &'static str = "0.0.8";
 
 pub const CONFIG_FOLDER: LazyLock<PathBuf> = LazyLock::new(|| {
     let mut path =

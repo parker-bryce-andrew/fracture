@@ -38,6 +38,13 @@
     </p>
   </description>
   <releases>
+    <release type="stable" version="0.0.8" date="2026-06-06T00:00:00Z">
+      <description>
+        <p>define render modes, profiles can add keyboard shortcuts, profiles can be removed from
+          rotation, &gt; and &lt; as keyboard shortcuts, 0-9 as keyboard shortcuts, shift click on
+          profile button, and error correction</p>
+      </description>
+    </release>
     <release type="stable" version="0.0.7" date="2026-05-29T00:00:00Z">
       <description>
         <p>save and load from profiles, switch to safe mode from settings, and other improvements</p>
