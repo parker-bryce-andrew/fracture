@@ -929,6 +929,25 @@ impl ApplicationHandler<()> for WinitHandler {
                 }
             }
 
+            WindowEvent::ModifiersChanged(m) => {
+                let left = m.lshift_state();
+                let right = m.rshift_state();
+
+                match left {
+                    winit::keyboard::ModifiersKeyState::Pressed => {
+                        app.user_interaction.shift_left_is_down = true;
+                    }
+                    _ => {}
+                }
+
+                match right {
+                    winit::keyboard::ModifiersKeyState::Pressed => {
+                        app.user_interaction.shift_right_is_down = true;
+                    }
+                    _ => {}
+                }
+            }
+
             _ => on_input_events(&mut app, &event),
         }
 

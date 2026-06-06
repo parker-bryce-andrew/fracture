@@ -104,6 +104,24 @@ pub(crate) fn on_keyboard_events(app: &mut Application, event: &WindowEvent) {
                             return;
                         }
 
+                        if let Some(text) = &event.text {
+                            if let Some(c) = text.as_str().chars().next() {
+                                match c {
+                                    '<' => {
+                                        app.configuration.load_previous_rotation(
+                                            &mut app.app_state,
+                                            &app.external,
+                                        );
+                                    }
+                                    '>' => {
+                                        app.configuration
+                                            .load_next_rotation(&mut app.app_state, &app.external);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+
                         match event.physical_key {
                             winit::keyboard::PhysicalKey::Code(key_code) => match key_code {
                                 KeyCode::Digit0 => {

@@ -8,7 +8,7 @@ use super::{
 use crate::{
     global_application_state::load_profiles,
     gpu_mirror_display::state::Application,
-    ui_state::{CreateUiState, Profile, RemoveColors, TitleBarDisplay, UiState},
+    ui_state::{CreateUiState, RemoveColors, TitleBarDisplay, UiState},
 };
 use wgpu::{Extent3d, Queue, TextureDescriptor, TextureView, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
@@ -265,54 +265,15 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
                     ) {
-                        let idx = app.configuration.active.active_profile;
-
-                        let list = load_profiles().unwrap_or(Default::default());
-                        let list2: Vec<_> = list.profiles.iter().enumerate().collect();
-
-                        let rotation_profiles: Vec<_> = list2
-                            .iter()
-                            .filter(|v| v.1.in_rotation.unwrap_or(true))
-                            .collect();
-
-                        let from_left = rotation_profiles.iter().filter(|v| v.0 < idx).last();
-
-                        let from_right = rotation_profiles.iter().find(|v| v.0 > idx);
-
-                        let selected: (usize, Profile);
-
                         if app.user_interaction.shift_left_is_down
                             || app.user_interaction.shift_right_is_down
                         {
-                            if let Some((idx, prof)) = from_left {
-                                let temp: &Profile = prof;
-                                let temp: Profile = temp.clone();
-
-                                selected = (*idx, temp);
-                            } else {
-                                selected = rotation_profiles
-                                    .get(rotation_profiles.len() - 1)
-                                    .map(|v| (v.0, v.1.clone()))
-                                    .unwrap_or((0, Default::default()));
-                            }
+                            app.configuration
+                                .load_previous_rotation(&mut app.app_state, &app.external);
                         } else {
-                            if let Some((idx, prof)) = from_right {
-                                let temp: &Profile = prof;
-                                let temp: Profile = temp.clone();
-
-                                selected = (*idx, temp);
-                            } else {
-                                selected = rotation_profiles
-                                    .get(0)
-                                    .map(|v| (v.0, v.1.clone()))
-                                    .unwrap_or((0, Default::default()));
-                            }
+                            app.configuration
+                                .load_next_rotation(&mut app.app_state, &app.external);
                         }
-
-                        let temp = selected.0;
-
-                        app.configuration
-                            .load_profile(temp, &mut app.app_state, &app.external);
                     }
                 }
             }

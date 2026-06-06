@@ -161,6 +161,70 @@ impl AppConfiguration {
             .unwrap();
     }
 
+    pub fn load_previous_rotation(&mut self, st: &mut AppState, ext: &ExternalControl) {
+        let idx = self.active.active_profile;
+
+        let list = load_profiles().unwrap_or(Default::default());
+        let list2: Vec<_> = list.profiles.iter().enumerate().collect();
+
+        let rotation_profiles: Vec<_> = list2
+            .iter()
+            .filter(|v| v.1.in_rotation.unwrap_or(true))
+            .collect();
+
+        let from_left = rotation_profiles.iter().filter(|v| v.0 < idx).last();
+
+        let selected: (usize, Profile);
+
+        if let Some((idx, prof)) = from_left {
+            let temp: &Profile = prof;
+            let temp: Profile = temp.clone();
+
+            selected = (*idx, temp);
+        } else {
+            selected = rotation_profiles
+                .get(rotation_profiles.len() - 1)
+                .map(|v| (v.0, v.1.clone()))
+                .unwrap_or((0, Default::default()));
+        }
+
+        let temp = selected.0;
+
+        self.load_profile(temp, st, &ext);
+    }
+
+    pub fn load_next_rotation(&mut self, st: &mut AppState, ext: &ExternalControl) {
+        let idx = self.active.active_profile;
+
+        let list = load_profiles().unwrap_or(Default::default());
+        let list2: Vec<_> = list.profiles.iter().enumerate().collect();
+
+        let rotation_profiles: Vec<_> = list2
+            .iter()
+            .filter(|v| v.1.in_rotation.unwrap_or(true))
+            .collect();
+
+        let from_right = rotation_profiles.iter().find(|v| v.0 > idx);
+
+        let selected: (usize, Profile);
+
+        if let Some((idx, prof)) = from_right {
+            let temp: &Profile = prof;
+            let temp: Profile = temp.clone();
+
+            selected = (*idx, temp);
+        } else {
+            selected = rotation_profiles
+                .get(0)
+                .map(|v| (v.0, v.1.clone()))
+                .unwrap_or((0, Default::default()));
+        }
+
+        let temp = selected.0;
+
+        self.load_profile(temp, st, &ext);
+    }
+
     // Loads a profile included in rotation
     pub fn load_rotation_profile(
         &mut self,
