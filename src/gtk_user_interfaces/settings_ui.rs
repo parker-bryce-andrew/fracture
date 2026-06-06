@@ -1800,11 +1800,11 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                 .unwrap_or(&none_text)
                 .as_str();
 
-            let field_val = EntryBuffer::builder().text(temp).build();
+            let name_field_val = EntryBuffer::builder().text(temp).build();
 
             let name_entry = gtk::Entry::builder()
                 .name("Name")
-                .buffer(&field_val)
+                .buffer(&name_field_val)
                 .build();
 
             profile_box_r1.append(&name_entry);
@@ -2129,7 +2129,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
                         Some(item) => {
                             let temp: &mut Profile = item;
 
-                            let data: GString = keyboard.buffer().text();
+                            let data: GString = name_field_val.text();
                             let new_name = format!("{}", data);
 
                             temp.name = Some(new_name);
