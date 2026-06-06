@@ -1,13 +1,10 @@
-use crate::{
-    gpu_mirror_display::{
-        state::Application,
-        window_cropping::{CropEndTriggeredFrom, if_in_crop_complete_crop},
-    },
-    ui_state::Profile,
+use crate::gpu_mirror_display::{
+    state::Application,
+    window_cropping::{CropEndTriggeredFrom, if_in_crop_complete_crop},
 };
 use winit::{
     event::{KeyEvent, WindowEvent},
-    keyboard::{KeyCode, SmolStr},
+    keyboard::KeyCode,
 };
 
 fn if_user_defined_shortcut(app: &mut Application, ev: &KeyEvent) -> bool {

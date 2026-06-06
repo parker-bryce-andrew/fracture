@@ -10,7 +10,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use wgpu::PresentMode;
-use winit::keyboard::SmolStr;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum VideoLocation {

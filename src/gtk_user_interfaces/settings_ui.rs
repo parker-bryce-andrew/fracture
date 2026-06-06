@@ -21,7 +21,6 @@ use gtk4::{
 use rand::{Rng, seq::IndexedRandom};
 use std::{cell::RefCell, rc::Rc, sync::Mutex, time::Duration};
 use wgpu::FilterMode;
-use winit::keyboard::SmolStr;
 
 pub static SETTINGS_IS_RUNNING: Mutex<bool> = Mutex::new(false);
 
