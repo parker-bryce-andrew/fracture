@@ -1698,6 +1698,8 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     let err_text_box = gtk::TextView::builder().visible(false).build();
     profile_box.append(&profile_box_r0);
+
+    let err_text_box2 = gtk::TextView::builder().visible(false).build();
     profile_box.append(&err_text_box);
 
     active_profile_out.append(&active_profile);
@@ -1705,6 +1707,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
     profile_box.append(&active_profile_out);
     active_profile.append(&profile_box_r1);
     active_profile.append(&profile_box_r2);
+    active_profile.append(&err_text_box2);
     active_profile.append(&profile_box_r3);
 
     let profiles_loaded = load_profiles();
@@ -1897,47 +1900,162 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
             profile_box_r2.append(&kbd_def);
 
-            let field_val = EntryBuffer::builder().text("").build();
+            let sp = &selected_profile;
 
-            let keyboard = gtk::Entry::builder()
+            let mut text = format!("");
+
+            let mut keyboard = gtk::Entry::builder()
                 .name("Keyboard shortcut")
-                // .sensitive(false)
                 .max_width_chars(3)
-                .xalign(0.5)
-                .buffer(&field_val)
-                .build();
-            // keyboard.conn
+                .xalign(0.5);
+            // .buffer(&field_val);
+
+            let mut add_shortcut_label = "Add";
+
+            if let Some(shortcut) = sp.shortcut {
+                text = format!("{shortcut}");
+                add_shortcut_label = "Remove";
+                keyboard = keyboard.sensitive(false);
+            }
+
+            let keyboard_shortcut_field_value = EntryBuffer::builder().text(&text).build();
+
+            keyboard = keyboard.buffer(&keyboard_shortcut_field_value);
+
+            let keyboard = keyboard.build();
 
             let in_def: RefCell<Option<char>> = RefCell::new(None);
+            let defined: Rc<RefCell<Option<char>>> = Rc::new(RefCell::new(None));
+            let defined_value = defined.clone();
 
-            field_val.connect_text_notify(move |s| {
+            let temp = profiles.clone();
+
+            keyboard_shortcut_field_value.connect_text_notify(move |s| {
                 let k: String = s.text().into();
 
                 let Some(c) = k.chars().last() else {
+                    *in_def.borrow_mut() = None;
+                    *defined_value.borrow_mut() = None;
+
+                    err_text_box2.set_visible(false);
+
                     return;
                 };
 
-                // PhysicalKey::try_from(c);
-                let c2 = format!("{c}");
-                let temp: SmolStr = winit::keyboard::SmolStr::new_inline(&c2);
+                let previous_usage = temp.list().iter().enumerate().find(|(_, profile)| {
+                    if let Some(x) = profile.shortcut {
+                        x == c
+                    } else {
+                        false
+                    }
+                });
 
-                println!("{temp:#?}");
+                if let Some(previous) = previous_usage {
+                    let shortcut = c;
+
+                    let previous = (previous.0, &previous.1.name);
+
+                    let debug = format!(
+                        "The keyboard shortcut {shortcut} has already been used. {}{previous:#?}",
+                        "\r\n\r\n",
+                    );
+
+                    let text_buff = TextBuffer::builder().text(debug).build();
+                    err_text_box2.set_buffer(Some(&text_buff));
+                    err_text_box2.set_visible(true);
+                    err_text_box2.add_css_class("err");
+                } else {
+                    err_text_box2.set_visible(false);
+                }
 
                 match { *in_def.borrow() } {
                     Some(c2) => {
                         if c == c2 {
                             *in_def.borrow_mut() = None;
+                            *defined_value.borrow_mut() = Some(c2);
                             return;
                         }
                     }
                     None => {
                         let temp = format!("{c}");
                         *in_def.borrow_mut() = Some(c);
+                        *defined_value.borrow_mut() = Some(c);
                         s.set_text(&temp);
                     }
                 }
             });
-            let add_kbd = gtk::Button::builder().label("Add").build();
+
+            let add_kbd = gtk::Button::builder().label(add_shortcut_label).build();
+
+            let v2 = v.clone();
+
+            let active: &Profile = sp;
+            let active: Profile = active.clone();
+
+            let def2 = defined.clone();
+
+            add_kbd.connect_clicked(move |_| {
+                let active = &active;
+
+                let mut profiles = load_profiles().unwrap_or(Default::default());
+
+                let idx = (selected_idx as isize).max(0);
+
+                if profiles.profiles.get(selected_idx as usize).is_some() {
+                    match active.shortcut {
+                        Some(_) => {
+                            profiles.profiles[selected_idx as usize].shortcut = None;
+                        }
+                        None => {
+                            let temp = { *def2.borrow() };
+
+                            match temp {
+                                Some(c) => {
+                                    let previous_usage =
+                                        profiles.list().iter().enumerate().find(|(_, profile)| {
+                                            if let Some(x) = profile.shortcut {
+                                                x == c
+                                            } else {
+                                                false
+                                            }
+                                        });
+
+                                    match previous_usage {
+                                        Some(_) => {
+                                            return;
+                                        }
+                                        None => {
+                                            profiles.profiles[selected_idx as usize].shortcut =
+                                                Some(c);
+                                        }
+                                    }
+                                }
+                                None => {
+                                    // profiles.profiles[selected_idx as usize].shortcut = None;
+
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    println!("error loading current profile at idx. attempting to reload profiles");
+                }
+
+                match save_profiles(profiles) {
+                    Ok(_) => {
+                        let mut v2 = v2.borrow_mut();
+                        let state: &mut UiState = v2.update();
+
+                        state.reload_profiles = true;
+                        state.active_profile = idx as usize;
+                    }
+                    Err(e) => {
+                        println!("{:#?}", e);
+                        return;
+                    }
+                }
+            });
 
             profile_box_r2.append(&keyboard);
             profile_box_r2.append(&add_kbd);
