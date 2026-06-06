@@ -160,6 +160,13 @@ pub fn write_ui_texture_and_handle_ui_actions(
             active_cfg.present = None;
             in_use_profile.present = None;
 
+            // maybe I should add a method to set the defaults... oh well maybe later
+            let ar = active_cfg.render_mode.unwrap_or(Default::default());
+            let iu = in_use_profile.render_mode.unwrap_or(Default::default());
+
+            active_cfg.render_mode = Some(ar);
+            in_use_profile.render_mode = Some(iu);
+
             // trash button
             if in_use_profile != active_cfg {
                 {

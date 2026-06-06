@@ -414,6 +414,46 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
         presents.append(&btn);
     }
 
+    let render_modes = gtk::Box::builder()
+        .valign(gtk4::Align::Start)
+        .spacing(10)
+        .orientation(gtk4::Orientation::Horizontal)
+        .build();
+
+    let avail: Vec<RenderMode> = {
+        vec![
+            RenderMode::PredictBest,
+            RenderMode::OnPipewireFrame,
+            RenderMode::Continuous,
+        ]
+    };
+
+    for render_mode in avail.iter() {
+        let label = format!("{:?}", render_mode);
+
+        let btn = gtk::ToggleButton::with_label(&label);
+        let v2 = v.clone();
+
+        let re = render_mode.clone();
+
+        btn.connect_clicked(move |_| {
+            let state = v2.clone();
+
+            let mut temp = state.borrow_mut();
+            let temp: &mut UiState = temp.update();
+
+            temp.should_define_new_preset = true;
+
+            temp.render_mode = re.clone();
+        });
+
+        if { v.borrow().render_mode.clone() } == *render_mode {
+            btn.set_active(true);
+        }
+
+        render_modes.append(&btn);
+    }
+
     let hittest = gtk::Box::builder()
         .valign(gtk4::Align::Start)
         .spacing(10)
@@ -1332,6 +1372,9 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
 
     base.append(&gtk::Label::new("Presents".into()));
     base.append(&presents);
+
+    base.append(&gtk::Label::new("RenderMode".into()));
+    base.append(&render_modes);
 
     if let Err(_) = std::env::var(SAFE_MODE) {
         base.append(&gtk::Label::new("Safe Mode".into()));
