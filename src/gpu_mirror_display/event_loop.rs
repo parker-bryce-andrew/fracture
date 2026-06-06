@@ -65,6 +65,7 @@ impl ApplicationHandler<()> for WinitHandler {
     // PredictBest which makes a chocie between the 2 based on whether shaders are being used.
     fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
         if let Some(app) = &self.app {
+            app.systems.window.pre_present_notify();
             app.systems.window.request_redraw();
         }
     }
