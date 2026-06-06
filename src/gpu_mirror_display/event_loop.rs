@@ -11,7 +11,7 @@ use crate::gpu_mirror_display::pipeline_definitions::{
 use crate::gpu_mirror_display::postprocessing_shaders::{
     define_postprocessing_mirror_shader, if_shader_compilation_requested,
 };
-use crate::gpu_mirror_display::render::on_redraw;
+use crate::gpu_mirror_display::render::{if_render_mode_redraw, on_redraw};
 use crate::gpu_mirror_display::state::{
     AppState, AppStatistics, AppSystems, Application, COMPLETE_RESIZE_ON_NEW_SETTINGS_AFTER,
     DmaStartupChecks, EnumeratedState, ExternalControl, FpsTracker, FpsTrackerOrigin, InitState,
@@ -30,7 +30,7 @@ use lamco_wgpu::SupportedFormat;
 use std::num::NonZero;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, mem};
+use std::{env, mem, thread};
 use wgpu::util::DeviceExt;
 use wgpu::{BufferDescriptor, BufferUsages, Extent3d, Surface};
 use winit::application::ApplicationHandler;
@@ -60,7 +60,14 @@ struct WinitHandler {
 }
 
 impl ApplicationHandler<()> for WinitHandler {
-    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {}
+    // There is only 1 user event, and it's a request to redraw that's triggered from pipewire
+    // notifying that a new frame was sent. There's 3 ways to draw, Continuous, OnFrame, and
+    // PredictBest which makes a chocie between the 2 based on whether shaders are being used.
+    fn user_event(&mut self, _: &ActiveEventLoop, _: ()) {
+        if let Some(app) = &self.app {
+            app.systems.window.request_redraw();
+        }
+    }
 
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.app.is_some() {
@@ -993,12 +1000,12 @@ impl ApplicationHandler<()> for WinitHandler {
 
     fn about_to_wait(&mut self, ev: &ActiveEventLoop) {
         match &self.app {
-            Some(w) => {
-                w.systems.window.request_redraw();
+            Some(app) => {
+                if_render_mode_redraw(app);
             }
             None => {
                 if ev.exiting() {
-                    println!("shutting down");
+                    println!("Event loop shutting down");
                     return;
                 } else {
                     self.about_to_wait_count += 1;
@@ -1014,8 +1021,23 @@ impl ApplicationHandler<()> for WinitHandler {
     }
 }
 
-pub fn run_mirror_video_output_ui(channels: GpuChannelSide) -> Result<(), EventLoopError> {
+pub fn run_mirror_video_output_ui(mut channels: GpuChannelSide) -> Result<(), EventLoopError> {
     let event_loop = EventLoop::new().unwrap();
+
+    let on_new_view_frames_event = event_loop.create_proxy();
+    let for_new_frames = channels.new_frame_notifier.1.take().unwrap();
+    let check_for_monitor_kill = channels.new_frame_notifier.0.clone();
+    let (stop_monitoring_and_kill, r) = std::sync::mpsc::channel();
+
+    let pipewire_frame_monitor = thread::spawn(move || {
+        'process: while let Ok(_) = for_new_frames.recv() {
+            let _ = on_new_view_frames_event.send_event(());
+
+            if let Ok(_end_) = r.try_recv() {
+                break 'process;
+            }
+        }
+    });
 
     let mut handler = WinitHandler {
         app: None,
@@ -1023,5 +1045,16 @@ pub fn run_mirror_video_output_ui(channels: GpuChannelSide) -> Result<(), EventL
         about_to_wait_count: 0,
     };
 
-    event_loop.run_app(&mut handler)
+    let ev_result = event_loop.run_app(&mut handler);
+
+    println!("Shutting down frame monitor");
+
+    while !pipewire_frame_monitor.is_finished() {
+        let _ = stop_monitoring_and_kill.send(());
+        let _ = check_for_monitor_kill.send(());
+    }
+
+    pipewire_frame_monitor.join().unwrap();
+
+    ev_result
 }

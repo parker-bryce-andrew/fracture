@@ -1061,6 +1061,8 @@ pub fn start_mirroring(
 
                     *lock = Some(frame);
                 }
+
+                let _ = dbus_channels.new_frame_notifier.send(());
             }
 
             if_high_dequeued_buffer_count(buffers.clone(), storage);

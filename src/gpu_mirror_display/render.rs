@@ -21,19 +21,36 @@ use crate::{
         utility_texture::DmaOrCpuMemory,
         window_cropping::{InitialAbsoluteFramePosition, InitialAbsoluteWindowPosition, Size},
     },
-    ui_state::{GreenScreen, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour},
+    ui_state::{
+        GreenScreen, RenderMode, VideoAspect, VideoLocation, WindowBackground, WindowBehaviour,
+    },
 };
 use lamco_wgpu::WgpuTexture;
 use std::{sync::Arc, time::SystemTime};
 use wgpu::{BindGroupLayout, Extent3d, TextureUsages, TextureView, TextureViewDescriptor};
 use winit::dpi::PhysicalSize;
 
+pub fn if_render_mode_redraw(app: &Application) {
+    match &app.configuration.active.render_mode {
+        RenderMode::PredictBest => match &app.configuration.active.postprocessor {
+            Some(_) => {
+                app.systems.window.request_redraw();
+            }
+            None => {}
+        },
+        RenderMode::OnPipewireFrame => {}
+        RenderMode::Continuous => {
+            app.systems.window.request_redraw();
+        }
+    }
+}
+
 pub fn on_redraw(mut app: &mut Application) {
     if app.app_state.initialization_checks.track_fps {
         app.metrics.fps_tracking.increment();
     }
 
-    app.systems.window.request_redraw();
+    if_render_mode_redraw(app);
 
     let data: Option<Arc<_>> = {
         if let Some(data) = &*FRAME_TRANSFER.lock().unwrap() {

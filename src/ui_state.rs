@@ -268,6 +268,19 @@ impl AppConfiguration {
     }
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+pub enum RenderMode {
+    PredictBest,
+    OnPipewireFrame,
+    Continuous,
+}
+
+impl Default for RenderMode {
+    fn default() -> Self {
+        RenderMode::PredictBest
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct UiState {
     pub display_title: TitleBarDisplay,
@@ -286,6 +299,7 @@ pub struct UiState {
     pub should_define_new_primary_sampler: bool,
     pub window_interactions: WindowInteractions,
     pub preset: wgpu::PresentMode,
+    pub render_mode: RenderMode,
     pub should_define_new_preset: bool,
     pub active_profile: usize,
     pub reload_profiles: bool,
@@ -314,6 +328,7 @@ impl UiState {
             minify_filter: temp.minify_filter,
             window_interactions: temp.window_interactions,
             present: temp.preset,
+            render_mode: temp.render_mode,
         };
 
         temp
@@ -340,6 +355,7 @@ pub struct SetUiState {
     pub minify_filter: wgpu::FilterMode,
     pub window_interactions: WindowInteractions,
     pub present: PresentMode,
+    pub render_mode: RenderMode,
 }
 
 impl Default for SetUiState {
@@ -371,6 +387,7 @@ impl SetUiState {
             minify_filter,
             window_interactions,
             present: preset,
+            render_mode,
         } = temp;
 
         let selected_preset;
@@ -404,6 +421,7 @@ impl SetUiState {
             active_profile: 0,
             reload_profiles: true,
             delayed_uptime_timer: None,
+            render_mode,
         };
 
         if let Some(postprocessor) = &mut temp.postprocessor {
@@ -450,6 +468,7 @@ impl Default for UiState {
             active_profile: 0,
             reload_profiles: true,
             delayed_uptime_timer: None,
+            render_mode: RenderMode::default(),
         }
     }
 }
@@ -490,6 +509,7 @@ pub struct CreateUiState {
     pub minify_filter: Option<wgpu::FilterMode>,
     pub window_interactions: Option<WindowInteractions>,
     pub present: Option<PresentMode>,
+    pub render_mode: Option<RenderMode>,
 }
 
 impl Default for CreateUiState {
@@ -515,6 +535,7 @@ impl Default for CreateUiState {
             active_profile: _,
             reload_profiles: _,
             delayed_uptime_timer: _,
+            render_mode,
         } = UiState::default();
 
         Self {
@@ -530,6 +551,7 @@ impl Default for CreateUiState {
             minify_filter: Some(minify_filter),
             window_interactions: Some(window_interactions),
             present: Some(presets),
+            render_mode: Some(render_mode),
         }
     }
 }
@@ -547,6 +569,7 @@ impl Into<SetUiState> for CreateUiState {
             minify_filter,
             window_interactions,
             present: presets,
+            render_mode,
         } = self;
 
         SetUiState {
@@ -565,6 +588,7 @@ impl Into<SetUiState> for CreateUiState {
             window_interactions: window_interactions
                 .unwrap_or(UiState::default().window_interactions),
             present: presets.unwrap_or(UiState::default().preset),
+            render_mode: render_mode.unwrap_or_default(),
         }
     }
 }
@@ -595,6 +619,7 @@ impl Into<CreateUiState> for SetUiState {
             minify_filter: Some(temp.minify_filter),
             window_interactions: Some(temp.window_interactions),
             present: Some(temp.present),
+            render_mode: Some(temp.render_mode),
         }
     }
 }

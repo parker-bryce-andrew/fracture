@@ -1522,6 +1522,7 @@ pub fn rebuild(v: &Rc<RefCell<UiState>>) -> gtk::Box {
             },
             window_interactions: WindowInteractions::Interactable,
             present: Default::default(),
+            render_mode: RenderMode::PredictBest,
         };
 
         let mut result = temp.build_new_full_settings_state();
