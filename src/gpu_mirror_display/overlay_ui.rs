@@ -265,8 +265,18 @@ pub fn write_ui_texture_and_handle_ui_actions(
                         &img_position,
                         &binary_images::ICON_DIAMOND_PROFILE_NO_FILL,
                     ) {
+                        let mut idx = app.configuration.active.active_profile as isize;
+
+                        if app.user_interaction.shift_left_is_down
+                            || app.user_interaction.shift_right_is_down
+                        {
+                            idx -= 1;
+                        } else {
+                            idx += 1;
+                        }
+
                         app.configuration.load_rotation_profile(
-                            app.configuration.active.active_profile + 1,
+                            idx,
                             &mut app.app_state,
                             &app.external,
                         );

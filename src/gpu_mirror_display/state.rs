@@ -38,6 +38,8 @@ pub struct UserInteractionState {
     pub mouse_is_down: bool,
     pub mouse_select_start: (u32, u32),
     pub mouse_resize_state: ResizeInteractionsState,
+    pub shift_left_is_down: bool,
+    pub shift_right_is_down: bool,
 }
 
 pub struct UiRendering {

@@ -162,7 +162,12 @@ impl AppConfiguration {
     }
 
     // Loads a profile included in rotation
-    pub fn load_rotation_profile(&mut self, idx: usize, st: &mut AppState, ext: &ExternalControl) {
+    pub fn load_rotation_profile(
+        &mut self,
+        mut idx: isize,
+        st: &mut AppState,
+        ext: &ExternalControl,
+    ) {
         self.profiles = load_profiles().unwrap_or(Default::default());
         let list: Vec<_> = self.profiles.list().iter().enumerate().collect();
 
@@ -178,6 +183,14 @@ impl AppConfiguration {
             profile_list = vec![];
             profile_list.push(list.first().unwrap());
         }
+
+        if idx < 0 {
+            let amt = (idx / profile_list.len() as isize) + 1;
+
+            idx += amt * profile_list.len() as isize;
+        }
+
+        let idx = idx as usize;
 
         let target = idx % profile_list.len();
 

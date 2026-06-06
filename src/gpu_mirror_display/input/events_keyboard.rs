@@ -49,7 +49,18 @@ pub(crate) fn on_keyboard_events(app: &mut Application, event: &WindowEvent) {
             is_synthetic: _,
         } => {
             match event.state {
-                winit::event::ElementState::Pressed => {}
+                winit::event::ElementState::Pressed => match event.physical_key {
+                    winit::keyboard::PhysicalKey::Code(key_code) => match key_code {
+                        KeyCode::ShiftLeft => {
+                            app.user_interaction.shift_left_is_down = true;
+                        }
+                        KeyCode::ShiftRight => {
+                            app.user_interaction.shift_right_is_down = true;
+                        }
+                        _ => {}
+                    },
+                    winit::keyboard::PhysicalKey::Unidentified(_) => {}
+                },
                 winit::event::ElementState::Released => match event.physical_key {
                     winit::keyboard::PhysicalKey::Code(key_code) => match key_code {
                         KeyCode::NumpadEnter | KeyCode::Enter => {
@@ -73,7 +84,12 @@ pub(crate) fn on_keyboard_events(app: &mut Application, event: &WindowEvent) {
                                 let _ = app.external.channels.request_pipewire_fps.send(());
                             }
                         }
-
+                        KeyCode::ShiftLeft => {
+                            app.user_interaction.shift_left_is_down = false;
+                        }
+                        KeyCode::ShiftRight => {
+                            app.user_interaction.shift_right_is_down = false;
+                        }
                         _ => {}
                     },
                     winit::keyboard::PhysicalKey::Unidentified(_) => {}

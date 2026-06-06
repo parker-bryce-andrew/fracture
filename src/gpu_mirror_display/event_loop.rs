@@ -599,6 +599,8 @@ impl ApplicationHandler<()> for WinitHandler {
                 mouse_is_down: false,
                 mouse_select_start: (0, 0),
                 mouse_resize_state: ResizeInteractionsState::None,
+                shift_left_is_down: false,
+                shift_right_is_down: false,
             },
             mirror: Mirror {
                 render: MirrorRenderer {
